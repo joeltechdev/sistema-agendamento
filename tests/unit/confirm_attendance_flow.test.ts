@@ -1,8 +1,27 @@
 import { createClient } from '@/lib/supabase/server'
 import { adminConfirmAttendance, getDashboardMetrics, getCompletedAppointments } from '@/app/actions/admin'
+import { createSessionToken } from '@/lib/security/session'
 
 jest.mock('next/cache', () => ({
   revalidatePath: jest.fn()
+}))
+
+let adminSessionToken: string
+
+beforeAll(async () => {
+  process.env.SESSION_SECRET = process.env.SESSION_SECRET || 'chave-secreta-de-teste-com-32-caracteres-min'
+  adminSessionToken = await createSessionToken('test')
+})
+
+jest.mock('next/headers', () => ({
+  cookies: jest.fn().mockImplementation(async () => ({
+    get: (key: string) => {
+      if (key === 'app_session') return { value: adminSessionToken }
+      return undefined
+    },
+    set: jest.fn(),
+    delete: jest.fn()
+  }))
 }))
 
 describe('Real Flow of Confirm Attendance and Status Reflection', () => {

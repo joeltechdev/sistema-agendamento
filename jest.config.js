@@ -5,4 +5,10 @@ module.exports = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
   },
+  transformIgnorePatterns: [
+    '/node_modules/(?!(jose)/)'
+  ],
+  transform: {
+    '^.+\\.(ts|tsx|js|jsx|mjs)$': ['ts-jest', { tsconfig: { allowJs: true } }],
+  },
 };

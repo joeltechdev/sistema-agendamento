@@ -16,6 +16,12 @@ import {
 } from '@/lib/security/auth-utils'
 import { checkRateLimit, resetRateLimit } from '@/lib/security/rate-limit'
 import { sendPasswordResetEmail } from '@/lib/email/mailer'
+import { 
+  createSessionToken, 
+  SESSION_COOKIE_NAME, 
+  LEGACY_AUTH_COOKIES, 
+  getSessionCookieOptions 
+} from '@/lib/security/session'
 
 export type ActionState = { error?: string; success?: string } | undefined
 
@@ -113,39 +119,18 @@ export async function login(prevState: ActionState, formData: FormData): Promise
     userId
   )
 
-  // Grava cookies de sessão seguros
+  // Emite token JWT de sessão assinado
+  const sessionToken = await createSessionToken(profile.id)
   const cookieStore = await cookies()
-  cookieStore.set('auth_session', 'active', {
-    path: '/',
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7 // 7 dias
-  })
-  cookieStore.set('auth_user_id', userId, {
-    path: '/',
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7
-  })
-  cookieStore.set('auth_user_email', email, {
-    path: '/',
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7
-  })
-  cookieStore.set('auth_user_name', userFullName, {
-    path: '/',
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7
-  })
-  cookieStore.set('auth_user_role', userRole, {
-    path: '/',
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7
-  })
+
+  // Grava cookie de sessão assinado seguro
+  cookieStore.set(SESSION_COOKIE_NAME, sessionToken, getSessionCookieOptions())
   cookieStore.delete('logged_out')
+
+  // Limpa cookies legados em texto puro
+  for (const legacy of LEGACY_AUTH_COOKIES) {
+    cookieStore.delete(legacy)
+  }
 
   revalidatePath('/', 'layout')
   redirect('/admin')
@@ -260,46 +245,23 @@ export async function registerUser(prevState: ActionState, formData: FormData): 
 
   // Criar sessão autenticada se for autocadastro ou preservar sessão do administrador
   const cookieStore = await cookies()
-  const currentRole = cookieStore.get('auth_user_role')?.value
+  const { data: { user: activeUser } } = await supabase.auth.getUser()
+  const activeUserRole = activeUser?.role || activeUser?.user_metadata?.role
 
-  if (currentRole === 'admin') {
+  if (activeUserRole === 'admin' || activeUserRole === 'manager') {
     // Quando o administrador cria um usuário/atendente, mantém a sessão do admin 100% intacta
     revalidatePath('/admin')
     revalidatePath('/admin/cidadaos')
     return { success: 'Usuário cadastrado com sucesso.' }
   }
 
-  cookieStore.set('auth_session', 'active', {
-    path: '/',
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7
-  })
-  cookieStore.set('auth_user_id', newUserId, {
-    path: '/',
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7
-  })
-  cookieStore.set('auth_user_email', email, {
-    path: '/',
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7
-  })
-  cookieStore.set('auth_user_name', name, {
-    path: '/',
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7
-  })
-  cookieStore.set('auth_user_role', defaultRole, {
-    path: '/',
-    httpOnly: true,
-    sameSite: 'lax',
-    maxAge: 60 * 60 * 24 * 7
-  })
+  const sessionToken = await createSessionToken(newUserId)
+  cookieStore.set(SESSION_COOKIE_NAME, sessionToken, getSessionCookieOptions())
   cookieStore.delete('logged_out')
+
+  for (const legacy of LEGACY_AUTH_COOKIES) {
+    cookieStore.delete(legacy)
+  }
 
   revalidatePath('/', 'layout')
   redirect('/admin')
@@ -497,11 +459,10 @@ export async function logout() {
     sameSite: 'lax',
     maxAge: 60 * 60 * 24 * 7
   })
-  cookieStore.delete('auth_session')
-  cookieStore.delete('auth_user_id')
-  cookieStore.delete('auth_user_email')
-  cookieStore.delete('auth_user_name')
-  cookieStore.delete('auth_user_role')
+  cookieStore.delete(SESSION_COOKIE_NAME)
+  for (const legacy of LEGACY_AUTH_COOKIES) {
+    cookieStore.delete(legacy)
+  }
 
   revalidatePath('/', 'layout')
   redirect('/login')
@@ -585,11 +546,10 @@ export async function deleteMyAccount(passwordConfirmation?: string): Promise<{ 
     sameSite: 'lax',
     maxAge: 60 * 60 * 24 * 7
   })
-  cookieStore.delete('auth_session')
-  cookieStore.delete('auth_user_id')
-  cookieStore.delete('auth_user_email')
-  cookieStore.delete('auth_user_name')
-  cookieStore.delete('auth_user_role')
+  cookieStore.delete(SESSION_COOKIE_NAME)
+  for (const legacy of LEGACY_AUTH_COOKIES) {
+    cookieStore.delete(legacy)
+  }
 
   revalidatePath('/', 'layout')
   return { success: true }

@@ -2,6 +2,19 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import fs from 'fs'
 import path from 'path'
+import { verifySessionToken, SESSION_COOKIE_NAME, LEGACY_AUTH_COOKIES } from '@/lib/security/session'
+
+function assertNotProductionWithoutSupabase() {
+  if (process.env.NODE_ENV === 'production') {
+    const hasUrl = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL)
+    const hasAnonKey = Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY)
+    if (!hasUrl || !hasAnonKey) {
+      throw new Error(
+        'Execução em produção sem credenciais válidas do Supabase configuradas. O uso do mock_db_store é estritamente proibido em ambiente de produção.'
+      )
+    }
+  }
+}
 
 function getTodayDateString(offsetDays = 0): string {
   const d = new Date()
@@ -131,7 +144,11 @@ function buildSeedAppointments() {
   ]
 }
 
-function getMockStore(): Record<string, any[]> {
+export function getMockStore(): Record<string, any[]> {
+  assertNotProductionWithoutSupabase()
+  if (globalAny.__schedulingMockData__) {
+    return globalAny.__schedulingMockData__
+  }
   const diskData = loadDiskData()
   if (diskData && Array.isArray(diskData.appointments) && diskData.appointments.length > 0) {
     globalAny.__schedulingMockData__ = diskData
@@ -200,45 +217,60 @@ function getMockStore(): Record<string, any[]> {
 
 
 export async function createClient() {
+  assertNotProductionWithoutSupabase()
+
   let isLoggedOut = false
-  let currentUserId: string | null = null
-  let currentUserEmail: string | null = null
-  let currentUserName: string | null = null
-  let currentUserRole: string | null = null
+  let sessionToken: string | null = null
 
   try {
     const cookieStore = await cookies()
     isLoggedOut = cookieStore.get('logged_out')?.value === 'true'
-    currentUserId = cookieStore.get('auth_user_id')?.value || null
-    currentUserEmail = cookieStore.get('auth_user_email')?.value || null
-    currentUserName = cookieStore.get('auth_user_name')?.value || null
-    currentUserRole = cookieStore.get('auth_user_role')?.value || null
+    sessionToken = cookieStore.get(SESSION_COOKIE_NAME)?.value || null
   } catch {
     // Context outside request
   }
 
-  const defaultId = currentUserId || 'test'
-  const defaultEmail = currentUserEmail || 'admin@prefeitura.gov.br'
-  const defaultName = currentUserName || 'Administrador'
-  const defaultRole = currentUserRole || 'admin'
+  const mockStore = getMockStore()
+
+  interface ServerAuthUser {
+    id: string
+    email: string
+    user_metadata: {
+      full_name: string
+      role: string
+    }
+    role: string
+  }
+
+  let authenticatedUser: ServerAuthUser | null = null
+
+  if (!isLoggedOut && sessionToken) {
+    const session = await verifySessionToken(sessionToken)
+    if (session?.sub) {
+      // Papel e status ativo são obtidos estritamente do banco de dados (profiles)
+      const profile = mockStore.profiles?.find((p: { id: string; status?: string; email?: string; full_name?: string; role?: string }) => p.id === session.sub)
+      if (profile && profile.status !== 'inactive') {
+        authenticatedUser = {
+          id: profile.id,
+          email: profile.email || '',
+          user_metadata: {
+            full_name: profile.full_name || '',
+            role: profile.role || 'citizen'
+          },
+          role: profile.role || 'citizen'
+        }
+      }
+    }
+  }
 
   return {
     auth: {
       getUser: async () => {
-        if (isLoggedOut) {
+        if (!authenticatedUser) {
           return { data: { user: null }, error: { message: 'Not authenticated' } }
         }
         return {
-          data: { 
-            user: { 
-              id: defaultId, 
-              email: defaultEmail,
-              user_metadata: {
-                full_name: defaultName,
-                role: defaultRole
-              }
-            } 
-          },
+          data: { user: authenticatedUser },
           error: null
         }
       },
@@ -246,7 +278,10 @@ export async function createClient() {
         try {
           const cookieStore = await cookies()
           cookieStore.set('logged_out', 'true', { path: '/' })
-          cookieStore.delete('auth_session')
+          cookieStore.delete(SESSION_COOKIE_NAME)
+          for (const legacy of LEGACY_AUTH_COOKIES) {
+            cookieStore.delete(legacy)
+          }
         } catch {}
         return { error: null }
       }
@@ -467,35 +502,11 @@ export async function createClient() {
         },
         single: async () => {
           executePendingMutations()
-          let filtered = applyFilters(tableData)
+          const filtered = applyFilters(tableData)
           let responseData = null
 
           if (table === 'profiles') {
-            const found = filtered[0]
-            if (found) {
-              if ((found.id === defaultId || found.email === defaultEmail || found.id === 'test') && currentUserName && currentUserName !== 'Administrador') {
-                responseData = { 
-                  ...found, 
-                  full_name: currentUserName, 
-                  email: currentUserEmail || found.email, 
-                  role: currentUserRole || found.role 
-                }
-              } else {
-                responseData = found
-              }
-            } else if (eqFilters['id'] === defaultId || eqFilters['email'] === defaultEmail || Object.keys(eqFilters).length === 0) {
-              responseData = { 
-                id: defaultId, 
-                role: defaultRole, 
-                full_name: defaultName, 
-                email: defaultEmail, 
-                cpf: '000.000.000-00', 
-                phone: '(88) 99999-0000', 
-                monthly_limit: 200 
-              }
-            } else {
-              responseData = null
-            }
+            responseData = filtered[0] || null
           } else if (table === 'system_settings') {
             const key = eqFilters['key'] || 'monthly_limit'
             const found = mockStore.system_settings.find((s: any) => s.key === key)

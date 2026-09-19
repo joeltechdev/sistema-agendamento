@@ -33,6 +33,7 @@ jest.mock('next/headers', () => ({
 const mockProfiles: any[] = []
 const mockAuditLogs: any[] = []
 const mockPasswordResets: any[] = []
+let explicitActiveUser: any = null
 
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn().mockImplementation(async () => ({
@@ -115,8 +116,18 @@ jest.mock('@/lib/supabase/server', () => ({
     }),
     auth: {
       getUser: jest.fn().mockImplementation(async () => {
-        const loggedInUser = mockProfiles[mockProfiles.length - 1]
-        return { data: { user: loggedInUser ? { id: loggedInUser.id, email: loggedInUser.email } : null } }
+        const loggedInUser = explicitActiveUser || mockProfiles[mockProfiles.length - 1]
+        return { 
+          data: { 
+            user: loggedInUser ? { 
+              id: loggedInUser.id, 
+              email: loggedInUser.email,
+              role: loggedInUser.role,
+              user_metadata: { role: loggedInUser.role, full_name: loggedInUser.full_name }
+            } : null 
+          },
+          error: null
+        }
       })
     }
   }))
@@ -285,7 +296,10 @@ describe('Fluxo 2: Redefinição de Senha (Forgot Password & Reset)', () => {
     expect(mockCookieStore.delete).toHaveBeenCalledWith('auth_session')
   })
 
-  it('deve armazenar os dados do usuário autenticado nos cookies de sessão no login e no registro', async () => {
+  it('deve armazenar token assinado de sessão (app_session) no registro e não confiar em cookies de papel', async () => {
+    mockProfiles.length = 0
+    mockCookieStore.set.mockClear()
+
     const formData = new FormData()
     formData.set('name', 'Antônio Roberto')
     formData.set('email', 'antonio.roberto@poranga.ce.gov.br')
@@ -294,18 +308,20 @@ describe('Fluxo 2: Redefinição de Senha (Forgot Password & Reset)', () => {
 
     await registerUser(undefined, formData)
 
-    expect(mockCookieStore.set).toHaveBeenCalledWith('auth_session', 'active', expect.any(Object))
-    expect(mockCookieStore.set).toHaveBeenCalledWith('auth_user_name', 'Antônio Roberto', expect.any(Object))
-    expect(mockCookieStore.set).toHaveBeenCalledWith('auth_user_email', 'antonio.roberto@poranga.ce.gov.br', expect.any(Object))
-    expect(mockCookieStore.set).toHaveBeenCalledWith('auth_user_role', 'atendente', expect.any(Object))
+    // Segurança (Fase 0): Não grava papel em texto plano em cookies legados
+    expect(mockCookieStore.set).toHaveBeenCalledWith('app_session', expect.any(String), expect.any(Object))
+    expect(mockCookieStore.set).not.toHaveBeenCalledWith('auth_user_role', expect.anything(), expect.anything())
   })
 
   it('deve preservar os cookies e a sessão do administrador ao cadastrar um novo atendente', async () => {
-    mockCookieStore.get.mockImplementation((key: string) => {
-      if (key === 'auth_user_role') return { value: 'admin' }
-      if (key === 'auth_user_id') return { value: 'admin-id-123' }
-      return undefined
-    })
+    const adminUser = {
+      id: 'admin-id-123',
+      email: 'admin@poranga.ce.gov.br',
+      full_name: 'Admin Master',
+      role: 'admin'
+    }
+    mockProfiles.push(adminUser)
+    explicitActiveUser = adminUser
 
     const formData = new FormData()
     formData.set('name', 'Nova Atendente Juliana')
@@ -317,8 +333,10 @@ describe('Fluxo 2: Redefinição de Senha (Forgot Password & Reset)', () => {
     const result = await registerUser(undefined, formData)
 
     expect(result?.success).toBe('Usuário cadastrado com sucesso.')
-    // Não deve ter sobrescrito os cookies da sessão ativa do admin
-    expect(mockCookieStore.set).not.toHaveBeenCalledWith('auth_user_role', 'atendente', expect.any(Object))
+    // Não deve ter sobrescrito a sessão ativa do admin
+    expect(mockCookieStore.set).not.toHaveBeenCalledWith('app_session', expect.any(String), expect.any(Object))
+
+    explicitActiveUser = null
   })
 
   it('deve formatar corretamente nomes a partir do e-mail quando o nome completo não foi informado', () => {
@@ -328,7 +346,7 @@ describe('Fluxo 2: Redefinição de Senha (Forgot Password & Reset)', () => {
     expect(formatNameFromEmail('ana@gov.br')).toBe('Ana')
   })
 
-  it('deve gravar o nome real do usuário nos cookies de sessão ao realizar login com sucesso', async () => {
+  it('deve armazenar token assinado de sessão (app_session) no login com sucesso e não expor papel em texto claro', async () => {
     // Adiciona perfil mock com nome real
     mockProfiles.push({
       id: 'prof-roberto-1',
@@ -347,9 +365,9 @@ describe('Fluxo 2: Redefinição de Senha (Forgot Password & Reset)', () => {
     const { login } = await import('@/app/actions/auth')
     await login(undefined, formData)
 
-    expect(mockCookieStore.set).toHaveBeenCalledWith('auth_user_name', 'Roberto Almeida', expect.any(Object))
-    expect(mockCookieStore.set).toHaveBeenCalledWith('auth_user_email', 'roberto.almeida@poranga.ce.gov.br', expect.any(Object))
-    expect(mockCookieStore.set).toHaveBeenCalledWith('auth_user_role', 'admin', expect.any(Object))
+    // Segurança (Fase 0): Gera sessão criptografada app_session e não confia em cookies legados
+    expect(mockCookieStore.set).toHaveBeenCalledWith('app_session', expect.any(String), expect.any(Object))
+    expect(mockCookieStore.set).not.toHaveBeenCalledWith('auth_user_role', expect.anything(), expect.anything())
   })
 
   it('deve permitir que um usuário/atendente exclua sua própria conta e limpe os cookies de sessão', async () => {

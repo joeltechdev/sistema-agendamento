@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server'
+import { verifySessionToken, SESSION_COOKIE_NAME } from '@/lib/security/session'
 
 export interface MiddlewareUser {
   id: string
@@ -33,16 +34,20 @@ export const updateSession = async (request: NextRequest): Promise<UpdateSession
   })
 
   const isLoggedOut = request.cookies.get('logged_out')?.value === 'true'
-  const hasSession = request.cookies.get('auth_session')?.value === 'active' || Boolean(request.cookies.get('app_session')?.value)
-  const userId = request.cookies.get('auth_user_id')?.value
-  const userEmail = request.cookies.get('auth_user_email')?.value
-  const rawRole = request.cookies.get('auth_user_role')?.value
+  const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value
 
-  // Autenticado estritamente se não estiver com flag de logout e tiver sessão explícita com dados de usuário
-  const isAuthenticated = !isLoggedOut && Boolean(hasSession && userId && userEmail)
+  let user: MiddlewareUser | null = null
 
-  const userRole = rawRole || 'citizen'
-  const user: MiddlewareUser | null = isAuthenticated && userId && userEmail ? { id: userId, email: userEmail, role: userRole } : null
+  if (!isLoggedOut && sessionToken) {
+    const verified = await verifySessionToken(sessionToken)
+    if (verified?.sub) {
+      user = {
+        id: verified.sub,
+        email: '',
+        role: ''
+      }
+    }
+  }
 
   const supabase: MiddlewareSupabaseClient = {
     auth: {
