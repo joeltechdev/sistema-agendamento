@@ -1,6 +1,7 @@
 'use client'
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
 import WeeklyCalendarGrid, { Appointment, isAppointmentOverdue, isSecondIssueAppointment } from './WeeklyCalendarGrid'
 import WalkInBookingModal from './WalkInBookingModal'
 import EmptyStateCanvas from './EmptyStateCanvas'
@@ -39,6 +40,7 @@ interface Props {
 }
 
 export default function AdminDashboardClient({ initialMetrics }: Props) {
+  const router = useRouter()
   const [metrics, setMetrics] = useState<DashboardMetrics>(initialMetrics)
   const [viewMode, setViewMode] = useState<'grid' | 'table' | 'completed'>('grid')
   const [jumpToDate, setJumpToDate] = useState<string | null>(null)
@@ -62,12 +64,22 @@ export default function AdminDashboardClient({ initialMetrics }: Props) {
     try {
       const data = await getCompletedAppointments(dateFilter || undefined)
       setCompletedList(data)
-    } catch (err) {
+    } catch (err: unknown) {
       console.error('Erro ao buscar atendimentos concluídos:', err)
+      const message = err instanceof Error ? err.message : String(err)
+      if (message.includes('Não autenticado') || message.includes('Permissão negada')) {
+        setRefreshFeedback({
+          text: 'Sessão expirada. Redirecionando para o login...',
+          type: 'warning'
+        })
+        setTimeout(() => {
+          router.push('/login')
+        }, 1500)
+      }
     } finally {
       setIsLoadingCompleted(false)
     }
-  }, [])
+  }, [router])
 
   useEffect(() => {
     if (viewMode === 'completed') {
@@ -78,7 +90,7 @@ export default function AdminDashboardClient({ initialMetrics }: Props) {
   // Play subtle chime sound using Web Audio API (no external file dependencies)
   const playNotificationSound = useCallback(() => {
     try {
-      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext
+      const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
       if (!AudioContextClass) return
       const ctx = new AudioContextClass()
       const now = ctx.currentTime
@@ -126,6 +138,17 @@ export default function AdminDashboardClient({ initialMetrics }: Props) {
         return
       }
 
+      if (res.status === 401 || res.status === 403) {
+        setRefreshFeedback({
+          text: 'Sessão expirada ou não autorizada. Redirecionando para o login...',
+          type: 'warning'
+        })
+        setTimeout(() => {
+          router.push('/login')
+        }, 1500)
+        return
+      }
+
       if (res.status === 429) {
         const errorData = await res.json().catch(() => ({}))
         console.warn('Rate limit atingido em metrics:', errorData)
@@ -160,7 +183,7 @@ export default function AdminDashboardClient({ initialMetrics }: Props) {
     } finally {
       setIsRefreshing(false)
     }
-  }, [])
+  }, [router])
 
   // Global State Sync via Aggregator Endpoint (/api/system/sync-state)
   const handleGlobalRefresh = useCallback(async () => {
@@ -189,6 +212,17 @@ export default function AdminDashboardClient({ initialMetrics }: Props) {
       if (res.status === 304) {
         setRefreshFeedback({ text: 'Sistema já atualizado (HTTP 304)', type: 'info' })
         setTimeout(() => setRefreshFeedback(null), 3000)
+        return
+      }
+
+      if (res.status === 401 || res.status === 403) {
+        setRefreshFeedback({
+          text: 'Sessão expirada ou não autorizada. Redirecionando para o login...',
+          type: 'warning'
+        })
+        setTimeout(() => {
+          router.push('/login')
+        }, 1500)
         return
       }
 
@@ -461,8 +495,19 @@ export default function AdminDashboardClient({ initialMetrics }: Props) {
     }
 
     // 4. Custom Window Event
-    const handleCustomWindowSync = (e: any) => {
-      const detail = e.detail
+    const handleCustomWindowSync = (e: Event) => {
+      const customEvt = e as CustomEvent<{
+        protocol: string
+        full_name?: string
+        appointment_date?: string
+        appointment_time?: string
+        appointment_type?: string
+        tipo?: string
+        phone?: string
+        id?: string
+        timestamp?: string
+      }>
+      const detail = customEvt.detail
       if (detail && detail.protocol) {
         const eventKey = `${detail.protocol}-${detail.timestamp || ''}`
         if (lastEventRef.current !== eventKey) {

@@ -10,7 +10,7 @@ jest.mock('@/lib/rateLimit', () => ({
 
 // Vamos mockar o módulo do supabase
 jest.mock('@/lib/supabase/server', () => {
-  let appointments: string[] = []; // armazena chaves "data-horario"
+  const appointments: string[] = []; // armazena chaves "data-horario"
   let appointmentCount = 0; // limite de 200
 
   return {

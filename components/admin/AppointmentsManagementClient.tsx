@@ -128,7 +128,7 @@ export default function AppointmentsManagementClient({ initialAppointments }: Pr
 
   // Counts for tabs and filters
   const counts = useMemo(() => {
-    let all = appointments.length
+    const all = appointments.length
     let confirmed = 0
     let overdueCount = 0
     let completed = 0

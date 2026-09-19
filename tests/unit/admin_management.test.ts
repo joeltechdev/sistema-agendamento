@@ -24,9 +24,9 @@ jest.mock('@/lib/supabase/server', () => ({
     },
     from: jest.fn().mockImplementation((table: string) => {
       if (table === 'profiles') {
-        let eqFilters: Record<string, any> = {}
-        let neqFilters: Record<string, any> = {}
-        let inFilters: Record<string, any[]> = {}
+        const eqFilters: Record<string, any> = {}
+        const neqFilters: Record<string, any> = {}
+        const inFilters: Record<string, any[]> = {}
         let pendingUpdate: any = null
         let pendingDelete = false
 

@@ -3,6 +3,7 @@
  * Cobre: ciclo completo, validacao, regras de negocio, seguranca, concorrencia, regressao P0
  */
 import { generateTimeSlots } from "../../services/availabilityService"
+import { z } from "zod"
 
 const TODAY = (() => {
   const d = new Date()
@@ -77,7 +78,6 @@ describe("TC-01 | Geracao de Slots de Horario", () => {
 })
 
 describe("TC-02 | Validacao de Campos do Agendamento (Zod)", () => {
-  const { z } = require("zod")
   const aptTypeSchema = z.preprocess((v: any) => {
     if (typeof v !== "string") return v
     const s = v.toLowerCase().trim()

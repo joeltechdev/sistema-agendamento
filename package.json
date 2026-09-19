@@ -7,7 +7,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "jest"
+    "test": "jest",
+    "seed:dev": "npx ts-node scripts/seed_dev_appointments.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.7",

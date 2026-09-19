@@ -16,6 +16,17 @@ function assertNotProductionWithoutSupabase() {
   }
 }
 
+function getBusinessDayDateString(dayOffsetFromMonday: number, weekOffset = 0): string {
+  const d = new Date()
+  const day = d.getDay()
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1) // Monday of current week
+  const target = new Date(d.getFullYear(), d.getMonth(), diff + (weekOffset * 7) + dayOffsetFromMonday)
+  const y = target.getFullYear()
+  const m = String(target.getMonth() + 1).padStart(2, '0')
+  const dayStr = String(target.getDate()).padStart(2, '0')
+  return `${y}-${m}-${dayStr}`
+}
+
 function getTodayDateString(offsetDays = 0): string {
   const d = new Date()
   d.setDate(d.getDate() + offsetDays)
@@ -53,19 +64,20 @@ export function saveDiskData(data: any) {
 // Define mockData no globalThis para persistir dados na memória entre Server Actions, Route Handlers e SSR
 const globalAny = globalThis as any
 
-// Seed inicial de agendamentos (datas dinâmicas sempre relativas a hoje)
-function buildSeedAppointments() {
+// Seed inicial de agendamentos distribuídos nos dias úteis da semana atual e da próxima semana
+export function buildSeedAppointments() {
   return [
+    // Semana Atual: Segunda-feira
     {
       id: 'apt-00000000-0001',
       citizen_id: 'test',
-      appointment_date: getTodayDateString(0),
+      appointment_date: getBusinessDayDateString(0, 0),
       appointment_time: '09:00:00',
       appointment_type: 'first_issue',
       tipo: '1_VIA',
       type: 'first_issue',
       status: 'confirmed',
-      protocol_number: `${getTodayDateString(0).replace(/-/g, '')}-HOJE1`,
+      protocol_number: `${getBusinessDayDateString(0, 0).replace(/-/g, '')}-1VIA01`,
       created_at: new Date().toISOString(),
       services: { name: 'Emissão de RG' },
       full_name: 'Maria Ruty Silva',
@@ -76,13 +88,13 @@ function buildSeedAppointments() {
     {
       id: 'apt-00000000-0002',
       citizen_id: 'test',
-      appointment_date: getTodayDateString(0),
+      appointment_date: getBusinessDayDateString(0, 0),
       appointment_time: '09:30:00',
       appointment_type: 'second_issue',
       tipo: '2_VIA',
       type: 'second_issue',
       status: 'confirmed',
-      protocol_number: `${getTodayDateString(0).replace(/-/g, '')}-HOJE2`,
+      protocol_number: `${getBusinessDayDateString(0, 0).replace(/-/g, '')}-2VIA02`,
       created_at: new Date().toISOString(),
       services: { name: 'Emissão de RG' },
       full_name: 'Carlos Eduardo Santos',
@@ -90,16 +102,17 @@ function buildSeedAppointments() {
       sexo: 'Masculino',
       attendant: 'Guichê 02 - Dr. Silva'
     },
+    // Semana Atual: Quarta-feira
     {
       id: 'apt-00000000-0003',
       citizen_id: 'test',
-      appointment_date: getTodayDateString(0),
-      appointment_time: '14:00:00',
+      appointment_date: getBusinessDayDateString(2, 0),
+      appointment_time: '10:00:00',
       appointment_type: 'first_issue',
       tipo: '1_VIA',
       type: 'first_issue',
       status: 'confirmed',
-      protocol_number: `${getTodayDateString(0).replace(/-/g, '')}-HOJE3`,
+      protocol_number: `${getBusinessDayDateString(2, 0).replace(/-/g, '')}-1VIA03`,
       created_at: new Date().toISOString(),
       services: { name: 'Emissão de RG' },
       full_name: 'Bruninha Oliveira',
@@ -110,13 +123,31 @@ function buildSeedAppointments() {
     {
       id: 'apt-00000000-0004',
       citizen_id: 'test',
-      appointment_date: getTodayDateString(1),
-      appointment_time: '10:00:00',
+      appointment_date: getBusinessDayDateString(2, 0),
+      appointment_time: '14:30:00',
+      appointment_type: 'second_issue',
+      tipo: '2_VIA',
+      type: 'second_issue',
+      status: 'confirmed',
+      protocol_number: `${getBusinessDayDateString(2, 0).replace(/-/g, '')}-2VIA04`,
+      created_at: new Date().toISOString(),
+      services: { name: 'Emissão de RG' },
+      full_name: 'Francisco Valdir Souza',
+      phone: '(88) 98888-7777',
+      sexo: 'Masculino',
+      attendant: 'Guichê 02 - Dr. Silva'
+    },
+    // Semana Atual: Sexta-feira
+    {
+      id: 'apt-00000000-0005',
+      citizen_id: 'test',
+      appointment_date: getBusinessDayDateString(4, 0),
+      appointment_time: '08:30:00',
       appointment_type: 'first_issue',
       tipo: '1_VIA',
       type: 'first_issue',
       status: 'confirmed',
-      protocol_number: `${getTodayDateString(1).replace(/-/g, '')}-AMANHA1`,
+      protocol_number: `${getBusinessDayDateString(4, 0).replace(/-/g, '')}-1VIA05`,
       created_at: new Date().toISOString(),
       services: { name: 'Emissão de RG' },
       full_name: 'Ana Carolina Ferreira',
@@ -125,23 +156,84 @@ function buildSeedAppointments() {
       attendant: 'Guichê 01 - Dra. Lima'
     },
     {
-      id: 'apt-00000000-0005',
+      id: 'apt-00000000-0006',
       citizen_id: 'test',
-      appointment_date: getTodayDateString(2),
-      appointment_time: '10:30:00',
+      appointment_date: getBusinessDayDateString(4, 0),
+      appointment_time: '11:00:00',
       appointment_type: 'second_issue',
       tipo: '2_VIA',
       type: 'second_issue',
       status: 'confirmed',
-      protocol_number: `${getTodayDateString(2).replace(/-/g, '')}-D2A1`,
+      protocol_number: `${getBusinessDayDateString(4, 0).replace(/-/g, '')}-2VIA06`,
       created_at: new Date().toISOString(),
       services: { name: 'Emissão de RG' },
       full_name: 'Lucas Mendes Oliveira',
       phone: '(88) 96666-5555',
       sexo: 'Masculino',
       attendant: 'Guichê 02 - Dr. Silva'
+    },
+    // Próxima Semana: Segunda-feira
+    {
+      id: 'apt-00000000-0007',
+      citizen_id: 'test',
+      appointment_date: getBusinessDayDateString(0, 1),
+      appointment_time: '10:00:00',
+      appointment_type: 'first_issue',
+      tipo: '1_VIA',
+      type: 'first_issue',
+      status: 'confirmed',
+      protocol_number: `${getBusinessDayDateString(0, 1).replace(/-/g, '')}-1VIA07`,
+      created_at: new Date().toISOString(),
+      services: { name: 'Emissão de RG' },
+      full_name: 'Juliana Ramos Peixoto',
+      phone: '(88) 99111-2222',
+      sexo: 'Feminino',
+      attendant: 'Guichê 01 - Dra. Lima'
+    },
+    {
+      id: 'apt-00000000-0008',
+      citizen_id: 'test',
+      appointment_date: getBusinessDayDateString(0, 1),
+      appointment_time: '14:00:00',
+      appointment_type: 'second_issue',
+      tipo: '2_VIA',
+      type: 'second_issue',
+      status: 'confirmed',
+      protocol_number: `${getBusinessDayDateString(0, 1).replace(/-/g, '')}-2VIA08`,
+      created_at: new Date().toISOString(),
+      services: { name: 'Emissão de RG' },
+      full_name: 'Roberto Carlos Almeida',
+      phone: '(88) 99333-4444',
+      sexo: 'Masculino',
+      attendant: 'Guichê 02 - Dr. Silva'
+    },
+    // Próxima Semana: Quarta-feira
+    {
+      id: 'apt-00000000-0009',
+      citizen_id: 'test',
+      appointment_date: getBusinessDayDateString(2, 1),
+      appointment_time: '09:00:00',
+      appointment_type: 'first_issue',
+      tipo: '1_VIA',
+      type: 'first_issue',
+      status: 'confirmed',
+      protocol_number: `${getBusinessDayDateString(2, 1).replace(/-/g, '')}-1VIA09`,
+      created_at: new Date().toISOString(),
+      services: { name: 'Emissão de RG' },
+      full_name: 'Daniela Farias Castro',
+      phone: '(88) 99555-6666',
+      sexo: 'Feminino',
+      attendant: 'Guichê 01 - Dra. Lima'
     }
   ]
+}
+
+export function resetMockStoreAppointments(): Record<string, any[]> {
+  assertNotProductionWithoutSupabase()
+  const store = getMockStore()
+  store.appointments = buildSeedAppointments()
+  saveDiskData(store)
+  return store
 }
 
 export function getMockStore(): Record<string, any[]> {
