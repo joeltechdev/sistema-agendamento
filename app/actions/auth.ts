@@ -65,16 +65,13 @@ export async function login(prevState: ActionState, formData: FormData): Promise
     .eq('email', email)
     .single()
 
-  // Verificação de senha
+  // Verificação de senha estrita
   let isValid = false
   if (profile && profile.password_hash) {
     isValid = await verifyPassword(password, profile.password_hash)
-  } else if (password === '123456' || password.length >= 6) {
-    // Compatibilidade transitória para contas mock de teste
-    isValid = true
   }
 
-  if (!isValid) {
+  if (!isValid || !profile) {
     await logSecurityAudit(supabase, 'LOGIN_FAILED', 'auth', `Tentativa de login falhou para o e-mail: ${email}`)
     return { error: 'Credenciais inválidas. Verifique seu e-mail e senha.' }
   }

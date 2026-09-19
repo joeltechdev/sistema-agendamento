@@ -185,7 +185,8 @@ function getMockStore(): Record<string, any[]> {
           email: 'admin@prefeitura.gov.br',
           cpf: '000.000.000-00',
           phone: '(11) 00000-0000',
-          monthly_limit: 200
+          monthly_limit: 200,
+          password_hash: '$2b$10$hket2Y5rNVt.mE1/jHQPjunjA330nKO8zlESghVQbVBAYhKcMQGOu' // '123456'
         }
       ],
       __seedDate: getTodayDateString(0)  // Tracks when seed was last generated
