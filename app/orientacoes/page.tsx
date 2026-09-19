@@ -3,9 +3,14 @@ import RequiredDocumentsList from '@/components/ui/RequiredDocumentsList';
 import InstitutionalContent from '@/components/ui/InstitutionalContent';
 import Link from 'next/link';
 
-export default function OrientacoesPage({ searchParams }: { searchParams: { via?: string } }) {
-  const isSecondIssue = searchParams.via === '2';
-  const currentType = isSecondIssue ? 'second_issue' : 'first_issue';
+export default async function OrientacoesPage({
+  searchParams
+}: {
+  searchParams?: Promise<{ via?: string }> | { via?: string }
+}) {
+  const resolvedParams = searchParams ? await Promise.resolve(searchParams) : undefined
+  const isSecondIssue = resolvedParams?.via === '2'
+  const currentType = isSecondIssue ? 'second_issue' : 'first_issue'
 
   return (
     <main className="container py-5">

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { verifySessionToken, SESSION_COOKIE_NAME } from '@/lib/security/session'
+import { getMockStore } from '@/lib/supabase/server'
 
 export interface MiddlewareUser {
   id: string
@@ -41,10 +42,14 @@ export const updateSession = async (request: NextRequest): Promise<UpdateSession
   if (!isLoggedOut && sessionToken) {
     const verified = await verifySessionToken(sessionToken)
     if (verified?.sub) {
-      user = {
-        id: verified.sub,
-        email: '',
-        role: ''
+      const mockStore = getMockStore()
+      const profile = mockStore.profiles?.find((p: { id: string; status?: string; role?: string; email?: string }) => p.id === verified.sub)
+      if (profile && profile.status !== 'inactive') {
+        user = {
+          id: profile.id,
+          email: profile.email || '',
+          role: profile.role || 'citizen'
+        }
       }
     }
   }
