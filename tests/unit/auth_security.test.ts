@@ -30,43 +30,63 @@ jest.mock('next/headers', () => ({
 }))
 
 // Mock Supabase DB in-memory for testing
-const mockProfiles: any[] = []
-const mockAuditLogs: any[] = []
-const mockPasswordResets: any[] = []
-let explicitActiveUser: any = null
+interface MockProfile {
+  id: string
+  email: string
+  full_name?: string
+  role?: string
+  status?: string
+  password_hash?: string
+  reset_token_hash?: string | null
+  reset_token_expires_at?: string | null
+  [key: string]: unknown
+}
+
+const mockProfiles: MockProfile[] = []
+const mockAuditLogs: Record<string, unknown>[] = []
+const mockPasswordResets: Record<string, unknown>[] = []
+let explicitActiveUser: MockProfile | null = null
+
+interface SecurityMockChain {
+  select: jest.Mock
+  eq: jest.Mock
+  gte: jest.Mock
+  insert: jest.Mock
+  update: jest.Mock
+  delete: jest.Mock
+  single: jest.Mock
+  neq: jest.Mock
+  then: jest.Mock
+}
 
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn().mockImplementation(async () => ({
     from: jest.fn().mockImplementation((table: string) => {
       let filterEmail: string | null = null
       let filterTokenHash: string | null = null
-      let filterExpiresAtGte: string | null = null
       let filterId: string | null = null
       let filterNeqId: string | null = null
 
-      const chain: any = {
+      const chain: SecurityMockChain = {
         select: jest.fn().mockReturnThis(),
-        eq: jest.fn().mockImplementation((col: string, val: any) => {
+        eq: jest.fn().mockImplementation((col: string, val: string) => {
           if (col === 'email') filterEmail = val
           if (col === 'reset_token_hash') filterTokenHash = val
           if (col === 'token_hash') filterTokenHash = val
           if (col === 'id') filterId = val
           return chain
         }),
-        gte: jest.fn().mockImplementation((col: string, val: any) => {
-          if (col === 'reset_token_expires_at' || col === 'expires_at') filterExpiresAtGte = val
-          return chain
-        }),
-        insert: jest.fn().mockImplementation(async (payload: any) => {
+        gte: jest.fn().mockReturnThis(),
+        insert: jest.fn().mockImplementation(async (payload: Record<string, unknown> | Record<string, unknown>[]) => {
           const items = Array.isArray(payload) ? payload : [payload]
-          if (table === 'profiles') mockProfiles.push(...items)
+          if (table === 'profiles') mockProfiles.push(...(items as MockProfile[]))
           if (table === 'audit_logs') mockAuditLogs.push(...items)
           if (table === 'password_resets') mockPasswordResets.push(...items)
           return { error: null }
         }),
-        update: jest.fn().mockImplementation((payload: any) => {
+        update: jest.fn().mockImplementation((payload: Record<string, unknown>) => {
           return {
-            eq: jest.fn().mockImplementation(async (col: string, val: any) => {
+            eq: jest.fn().mockImplementation(async (col: string, val: string) => {
               if (table === 'profiles') {
                 const target = mockProfiles.find(p => p[col] === val)
                 if (target) Object.assign(target, payload)
@@ -80,7 +100,7 @@ jest.mock('@/lib/supabase/server', () => ({
           }
         }),
         delete: jest.fn().mockImplementation(() => ({
-          eq: jest.fn().mockImplementation(async (col: string, val: any) => {
+          eq: jest.fn().mockImplementation(async (col: string, val: string) => {
             if (table === 'profiles') {
               const idx = mockProfiles.findIndex(p => p[col] === val)
               if (idx >= 0) mockProfiles.splice(idx, 1)
@@ -98,11 +118,11 @@ jest.mock('@/lib/supabase/server', () => ({
           }
           return { data: null, error: null }
         }),
-        neq: jest.fn().mockImplementation((col: string, val: any) => {
+        neq: jest.fn().mockImplementation((col: string, val: string) => {
           if (col === 'id') filterNeqId = val
           return chain
         }),
-        then: jest.fn().mockImplementation((resolve: any) => {
+        then: jest.fn().mockImplementation((resolve: (val: { data: unknown[]; error: unknown }) => void) => {
           if (table === 'profiles') {
             let res = mockProfiles.filter(p => p.role === 'admin' && p.status !== 'inactive')
             if (filterNeqId) res = res.filter(p => p.id !== filterNeqId)
@@ -211,9 +231,9 @@ describe('Fluxo 1: Cadastro de Novo Usuário (Self-Signup)', () => {
     // Verifica que o perfil foi inserido com role 'atendente'
     const createdProfile = mockProfiles.find(p => p.email === 'silva.atendente@poranga.ce.gov.br')
     expect(createdProfile).toBeDefined()
-    expect(createdProfile.role).toBe('atendente')
-    expect(createdProfile.password_hash).not.toBe('SenhaForte#2026')
-    expect(await verifyPassword('SenhaForte#2026', createdProfile.password_hash)).toBe(true)
+    expect(createdProfile?.role).toBe('atendente')
+    expect(createdProfile?.password_hash).not.toBe('SenhaForte#2026')
+    expect(await verifyPassword('SenhaForte#2026', createdProfile?.password_hash || '')).toBe(true)
 
     // Verifica log de auditoria
     const audit = mockAuditLogs.find(l => l.action === 'REGISTER_USER')
@@ -261,8 +281,8 @@ describe('Fluxo 2: Redefinição de Senha (Forgot Password & Reset)', () => {
 
     // Verifica que o token hash foi salvo no perfil
     const user = mockProfiles.find(p => p.email === 'maria@poranga.ce.gov.br')
-    expect(user.reset_token_hash).toBeDefined()
-    expect(user.reset_token_expires_at).toBeDefined()
+    expect(user?.reset_token_hash).toBeDefined()
+    expect(user?.reset_token_expires_at).toBeDefined()
   })
 
   it('deve executar a redefinição de senha com sucesso, atualizar hash e invalidar o token', async () => {
@@ -289,8 +309,8 @@ describe('Fluxo 2: Redefinição de Senha (Forgot Password & Reset)', () => {
 
     // Verifica que o usuário agora tem a nova senha e o token foi invalidado
     const updatedUser = mockProfiles.find(p => p.email === 'carlos@poranga.ce.gov.br')
-    expect(await verifyPassword('NovaSenhaSegura#2026', updatedUser.password_hash)).toBe(true)
-    expect(updatedUser.reset_token_hash).toBeNull()
+    expect(await verifyPassword('NovaSenhaSegura#2026', updatedUser?.password_hash || '')).toBe(true)
+    expect(updatedUser?.reset_token_hash).toBeNull()
 
     // Verifica logout / limpeza de sessão
     expect(mockCookieStore.delete).toHaveBeenCalledWith('auth_session')

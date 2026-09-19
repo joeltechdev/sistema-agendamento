@@ -25,8 +25,14 @@ import {
 
 export type ActionState = { error?: string; success?: string } | undefined
 
+interface AuditLogClient {
+  from: (table: string) => {
+    insert: (payload: Record<string, unknown>) => Promise<unknown>
+  }
+}
+
 // Helper de auditoria centralizado
-async function logSecurityAudit(supabase: any, action: string, resource: string, details: string, userId?: string) {
+async function logSecurityAudit(supabase: AuditLogClient, action: string, resource: string, details: string, userId?: string) {
   try {
     await supabase.from('audit_logs').insert({
       user_id: userId || 'anonymous',

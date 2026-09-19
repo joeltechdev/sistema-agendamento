@@ -12,6 +12,16 @@ jest.mock('next/cache', () => ({
 let mockCurrentUser: { id: string; email: string; role: string } | null = null
 let mockUserRoleInDb: string | null = null
 
+interface MockQueryChain {
+  select: jest.Mock
+  eq: jest.Mock
+  single: jest.Mock
+  insert: jest.Mock
+  update: jest.Mock
+  delete: jest.Mock
+  upsert: jest.Mock
+}
+
 jest.mock('@/lib/supabase/server', () => ({
   createClient: jest.fn().mockImplementation(async () => ({
     auth: {
@@ -21,7 +31,7 @@ jest.mock('@/lib/supabase/server', () => ({
       })
     },
     from: jest.fn().mockImplementation((table: string) => {
-      const chain: any = {
+      const chain: MockQueryChain = {
         select: jest.fn().mockReturnThis(),
         eq: jest.fn().mockReturnThis(),
         single: jest.fn().mockImplementation(async () => {

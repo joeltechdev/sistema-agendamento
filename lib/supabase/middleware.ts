@@ -53,10 +53,10 @@ export const updateSession = async (request: NextRequest): Promise<UpdateSession
     auth: {
       getUser: async () => ({ data: { user } })
     },
-    from: (_table: string) => {
+    from: () => {
       const chain: MiddlewareQueryChain<MiddlewareUser> = {
-        select: (_columns?: string) => chain,
-        eq: (_column: string, _value: unknown) => chain,
+        select: () => chain,
+        eq: () => chain,
         single: async () => ({ data: user ? { id: user.id, email: user.email, role: user.role } : null })
       }
       return chain

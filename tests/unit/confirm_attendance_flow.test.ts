@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { adminConfirmAttendance, getDashboardMetrics, getCompletedAppointments } from '@/app/actions/admin'
+import { adminConfirmAttendance, getCompletedAppointments } from '@/app/actions/admin'
 import { createSessionToken } from '@/lib/security/session'
 
 jest.mock('next/cache', () => ({
@@ -23,6 +23,12 @@ jest.mock('next/headers', () => ({
     delete: jest.fn()
   }))
 }))
+
+interface AppointmentItem {
+  id: string
+  status: string
+  [key: string]: unknown
+}
 
 describe('Real Flow of Confirm Attendance and Status Reflection', () => {
   it('should update the appointment in global mockData and reflect in queries', async () => {
@@ -51,19 +57,19 @@ describe('Real Flow of Confirm Attendance and Status Reflection', () => {
       .from('appointments')
       .select('*')
     
-    const found = updatedApts.find((a: any) => a.id === targetApt.id)
+    const found = updatedApts.find((a: AppointmentItem) => a.id === targetApt.id)
     console.log('Target appointment after update in DB:', found?.id, found?.status)
     expect(found?.status).toBe('completed')
     
     // 4. Check completed appointments count
-    const completedList = updatedApts.filter((a: any) => a.status === 'completed')
+    const completedList = updatedApts.filter((a: AppointmentItem) => a.status === 'completed')
     console.log('Completed appointments count:', completedList.length)
     expect(completedList.length).toBeGreaterThanOrEqual(1)
   })
 
   it('should persist completed status across full process/worker restart (F5 simulation)', async () => {
     // 1. Clear in-memory global state to simulate a new SSR process/worker on F5
-    delete (globalThis as any).__schedulingMockData__
+    delete (globalThis as Record<string, unknown>).__schedulingMockData__
 
     // 2. Load from disk via fresh createClient
     const ssrSupabase = await createClient()
@@ -71,7 +77,7 @@ describe('Real Flow of Confirm Attendance and Status Reflection', () => {
       .from('appointments')
       .select('*')
 
-    const completed = ssrAppointments.filter((a: any) => a.status === 'completed')
+    const completed = ssrAppointments.filter((a: AppointmentItem) => a.status === 'completed')
     expect(completed.length).toBeGreaterThanOrEqual(1)
 
     // 3. Verify getCompletedAppointments action also returns completed items
