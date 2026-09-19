@@ -209,7 +209,7 @@ export async function registerUser(prevState: ActionState, formData: FormData): 
   if (existingUser) {
     console.warn(`[Auth:Register] Tentativa de cadastro duplicado para e-mail existente: ${email} (ID: ${existingUser.id})`)
     await logSecurityAudit(supabase, 'REGISTER_DUPLICATE_ATTEMPT', 'auth', `Tentativa de cadastro com e-mail já existente: ${email}`)
-    return { error: 'Não foi possível concluir o cadastro com os dados informados. Verifique as informações ou acesse o login.' }
+    return { error: 'Este e-mail já está cadastrado no sistema. Por favor, acesse a página de login ou recupere sua senha.' }
   }
 
   console.info(`[Auth:Register] Validações e verificação de duplicidade aprovadas. Gerando hash de senha com bcrypt (12 rounds)...`)
