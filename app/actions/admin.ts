@@ -21,6 +21,9 @@ async function logAudit(supabase: any, userId: string, action: string, resource:
   })
 }
 
+const STRICT_ADMIN_ROLES = ['admin', 'manager']
+const ALLOWED_STAFF_ROLES = ['admin', 'manager', 'atendente', 'attendant']
+
 // Verifica e recupera contexto Admin / Atendimento (Dry / Reusable)
 async function getAdminContext(requireStrictAdmin: boolean = false) {
   const supabase = await createClient()
@@ -33,16 +36,16 @@ async function getAdminContext(requireStrictAdmin: boolean = false) {
     .eq('id', user.id)
     .single()
 
-  const resolvedRole = profile?.role || user?.user_metadata?.role || (user as any)?.role || 'citizen'
+  const resolvedRole = profile?.role || (user as { role?: string; user_metadata?: { role?: string } })?.user_metadata?.role || (user as { role?: string })?.role || 'citizen'
 
-  // Bloqueio rigoroso: Cidadãos e usuários não autorizados são bloqueados
-  if (resolvedRole === 'citizen' || !['admin', 'manager', 'atendente', 'attendant'].includes(resolvedRole)) {
+  // Deny by default: Bloqueia qualquer usuário sem papel expressamente permitido
+  if (!resolvedRole || !ALLOWED_STAFF_ROLES.includes(resolvedRole)) {
     throw new Error('Permissão negada. Apenas administradores e atendentes autorizados.')
   }
 
   // Operações restritas a Administrador Geral (ex: configurações de sistema, exclusões, gestão de administradores)
-  if (requireStrictAdmin && resolvedRole === 'citizen') {
-    throw new Error('Permissão negada. Apenas administradores.')
+  if (requireStrictAdmin && !STRICT_ADMIN_ROLES.includes(resolvedRole)) {
+    throw new Error('Permissão negada. Apenas administradores autorizados.')
   }
 
   return { supabase, user, role: resolvedRole }

@@ -1,11 +1,33 @@
 import { getAuditLogs } from '@/app/actions/admin'
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import Link from 'next/link'
+
+export const dynamic = 'force-dynamic'
 
 export default async function AuditoriaPage({
   searchParams,
 }: {
   searchParams: Promise<{ page?: string }>
 }) {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect('/login?next=/admin/auditoria')
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const resolvedRole = profile?.role || user?.user_metadata?.role || 'citizen'
+  if (!['admin', 'manager'].includes(resolvedRole)) {
+    redirect('/admin')
+  }
+
   const searchParamsObj = await searchParams;
   const page = parseInt(searchParamsObj.page || '1')
   const limit = 15

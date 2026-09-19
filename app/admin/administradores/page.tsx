@@ -19,9 +19,9 @@ export default async function AdministradoresPage() {
     .eq('id', user.id)
     .single()
 
-  const resolvedRole = profile?.role || user?.user_metadata?.role || 'admin'
-  if (resolvedRole === 'citizen') {
-    redirect('/perfil')
+  const resolvedRole = profile?.role || user?.user_metadata?.role || 'citizen'
+  if (!['admin', 'manager'].includes(resolvedRole)) {
+    redirect('/admin')
   }
 
   const { users, kpi } = await getAdministrators()

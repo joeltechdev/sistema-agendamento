@@ -1,10 +1,27 @@
 import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
 import ConfigForm from './ConfigForm'
 
 export const dynamic = 'force-dynamic'
 
 export default async function ConfiguracoesPage() {
   const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect('/login?next=/admin/configuracoes')
+  }
+
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user.id)
+    .single()
+
+  const resolvedRole = profile?.role || user?.user_metadata?.role || 'citizen'
+  if (!['admin', 'manager'].includes(resolvedRole)) {
+    redirect('/admin')
+  }
 
   const [limitRes, daysRes, hoursRes] = await Promise.all([
     supabase.from('system_settings').select('value').eq('key', 'monthly_limit').single(),
