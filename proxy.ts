@@ -24,7 +24,7 @@ export async function proxy(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    const role = profile?.role || (user as { role?: string })?.role || 'citizen'
+    const role = profile?.role || user.role || 'citizen'
     if (role === 'citizen') {
       return NextResponse.json(
         { error: 'Permissão negada. Apenas profissionais autorizados.' },
@@ -43,7 +43,7 @@ export async function proxy(request: NextRequest) {
   // 3. Se o usuário já está logado e tenta ir pra login/cadastro, redireciona conforme seu papel
   if (user && (pathname === '/login' || pathname === '/cadastro')) {
     const url = request.nextUrl.clone()
-    const role = (user as { role?: string })?.role || 'atendente'
+    const role = user.role || 'atendente'
     if (role === 'citizen') {
       url.pathname = '/perfil'
     } else {
@@ -67,7 +67,7 @@ export async function proxy(request: NextRequest) {
       .eq('id', user.id)
       .single()
 
-    const role = profile?.role || (user as { role?: string })?.role || 'citizen'
+    const role = profile?.role || user.role || 'citizen'
 
     // Cidadão não acessa /admin — redireciona para seu perfil (nunca para /login para evitar loop)
     if (role === 'citizen') {

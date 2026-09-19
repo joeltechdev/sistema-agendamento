@@ -1,6 +1,31 @@
 import { NextResponse, type NextRequest } from 'next/server'
 
-export const updateSession = async (request: NextRequest) => {
+export interface MiddlewareUser {
+  id: string
+  email: string
+  role: string
+}
+
+export interface MiddlewareQueryChain<T> {
+  select: (columns?: string) => MiddlewareQueryChain<T>
+  eq: (column: string, value: unknown) => MiddlewareQueryChain<T>
+  single: () => Promise<{ data: T | null }>
+}
+
+export interface MiddlewareSupabaseClient {
+  auth: {
+    getUser: () => Promise<{ data: { user: MiddlewareUser | null } }>
+  }
+  from: (table: string) => MiddlewareQueryChain<MiddlewareUser>
+}
+
+export interface UpdateSessionResult {
+  supabaseResponse: NextResponse
+  user: MiddlewareUser | null
+  supabase: MiddlewareSupabaseClient
+}
+
+export const updateSession = async (request: NextRequest): Promise<UpdateSessionResult> => {
   const supabaseResponse = NextResponse.next({
     request: {
       headers: request.headers,
@@ -17,16 +42,16 @@ export const updateSession = async (request: NextRequest) => {
   const isAuthenticated = !isLoggedOut && Boolean(hasSession && userId && userEmail)
 
   const userRole = rawRole || 'citizen'
-  const user = isAuthenticated && userId && userEmail ? { id: userId, email: userEmail, role: userRole } : null
+  const user: MiddlewareUser | null = isAuthenticated && userId && userEmail ? { id: userId, email: userEmail, role: userRole } : null
 
-  const supabase = {
+  const supabase: MiddlewareSupabaseClient = {
     auth: {
       getUser: async () => ({ data: { user } })
     },
-    from: () => {
-      const chain = {
-        select: () => chain,
-        eq: () => chain,
+    from: (_table: string) => {
+      const chain: MiddlewareQueryChain<MiddlewareUser> = {
+        select: (_columns?: string) => chain,
+        eq: (_column: string, _value: unknown) => chain,
         single: async () => ({ data: user ? { id: user.id, email: user.email, role: user.role } : null })
       }
       return chain
