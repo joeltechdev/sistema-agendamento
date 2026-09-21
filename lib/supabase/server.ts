@@ -1,4 +1,5 @@
 import { createServerClient } from '@supabase/ssr'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { cookies } from 'next/headers'
 import fs from 'fs'
 import path from 'path'
@@ -338,7 +339,9 @@ export function getMockStore(): Record<string, any[]> {
 
 
 export async function createClient() {
-  assertNotProductionWithoutSupabase()
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+  const isRealSupabase = Boolean(supabaseUrl && supabaseKey && process.env.NODE_ENV !== 'test')
 
   let isLoggedOut = false
   let sessionToken: string | null = null
@@ -351,8 +354,6 @@ export async function createClient() {
     // Context outside request
   }
 
-  const mockStore = getMockStore()
-
   interface ServerAuthUser {
     id: string
     email: string
@@ -364,6 +365,68 @@ export async function createClient() {
   }
 
   let authenticatedUser: ServerAuthUser | null = null
+
+  if (isRealSupabase) {
+    const realClient = createSupabaseClient(supabaseUrl!, supabaseKey!, {
+      auth: { persistSession: false }
+    })
+
+    if (!isLoggedOut && sessionToken) {
+      try {
+        const session = await verifySessionToken(sessionToken)
+        if (session?.sub) {
+          const { data: profile } = await realClient
+            .from('profiles')
+            .select('id, email, full_name, role, status')
+            .eq('id', session.sub)
+            .single()
+
+          if (profile && profile.status !== 'inactive') {
+            authenticatedUser = {
+              id: profile.id,
+              email: profile.email || '',
+              user_metadata: {
+                full_name: profile.full_name || '',
+                role: profile.role || 'citizen'
+              },
+              role: profile.role || 'citizen'
+            }
+          }
+        }
+      } catch {}
+    }
+
+    return {
+      auth: {
+        getUser: async () => {
+          if (!authenticatedUser) {
+            return { data: { user: null }, error: { message: 'Not authenticated' } }
+          }
+          return {
+            data: { user: authenticatedUser },
+            error: null
+          }
+        },
+        signOut: async () => {
+          try {
+            const cookieStore = await cookies()
+            cookieStore.set('logged_out', 'true', { path: '/' })
+            cookieStore.delete(SESSION_COOKIE_NAME)
+            for (const legacy of LEGACY_AUTH_COOKIES) {
+              cookieStore.delete(legacy)
+            }
+          } catch {}
+          return { error: null }
+        }
+      },
+      rpc: (fn: string, params: any) => realClient.rpc(fn, params),
+      from: (table: string) => realClient.from(table)
+    } as any
+  }
+
+  assertNotProductionWithoutSupabase()
+
+  const mockStore = getMockStore()
 
   if (!isLoggedOut && sessionToken) {
     const session = await verifySessionToken(sessionToken)
