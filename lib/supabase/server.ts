@@ -56,6 +56,19 @@ function loadDiskData(): any {
       const parsed = JSON.parse(raw)
       if (parsed && typeof parsed === 'object' && Array.isArray(parsed.appointments)) {
         lastDiskMtime = stats.mtimeMs
+        if (!Array.isArray(parsed.services) || parsed.services.length === 0) {
+          parsed.services = [
+            { id: '550e8400-e29b-41d4-a716-446655440001', name: 'Emissão de RG', description: 'Emissão da Carteira de Identidade Nacional', duration_minutes: 30, is_active: true, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }
+          ]
+        }
+        if (!Array.isArray(parsed.system_settings) || parsed.system_settings.length === 0) {
+          parsed.system_settings = [
+            { key: 'monthly_limit', value: '200' },
+            { key: 'second_issue_warning', value: 'Para emissão de 2ª via, é necessário apresentar o comprovante de pagamento da taxa DAE ou declaração de isenção.' },
+            { key: 'available_days', value: '[1,2,3,4,5]' },
+            { key: 'operating_hours', value: JSON.stringify({ morning: { start: '08:00', end: '12:00', enabled: true }, afternoon: { start: '13:00', end: '17:00', enabled: true } }) }
+          ]
+        }
         return parsed
       }
     }

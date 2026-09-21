@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import BookingWizard from '@/components/ui/BookingWizard'
-import { getSystemSettings, getActiveServices } from '@/services/institutionalService'
+import { getSystemSettings, getActiveServices, DEFAULT_SERVICE } from '@/services/institutionalService'
 import Link from 'next/link'
 import Image from 'next/image'
 
@@ -29,18 +29,9 @@ export default async function AgendamentoPage({
   }
 
   // Buscar primeiro serviço ativo
-  const services = await getActiveServices()
-  if (services.length === 0) {
-    return (
-      <div className="container py-5 text-center">
-        <div className="card shadow-sm border-0 p-5 mx-auto col-md-6 rounded-4">
-          <i className="bi bi-exclamation-circle text-warning display-4 mb-3"></i>
-          <h2 className="h4 fw-bold" style={{ color: '#0f172a' }}>Serviço Temporariamente Indisponível</h2>
-          <p className="text-secondary">Não há postos de atendimento ou serviços ativos no momento. Tente novamente mais tarde.</p>
-          <Link href="/" className="btn btn-outline-primary mt-2">Voltar ao Início</Link>
-        </div>
-      </div>
-    )
+  let services = await getActiveServices()
+  if (!services || services.length === 0) {
+    services = [DEFAULT_SERVICE]
   }
 
   const settings = await getSystemSettings(['second_issue_warning'])
