@@ -480,6 +480,9 @@ export default function AdminDashboardClient({ initialMetrics }: Props) {
 
       eventSource.onerror = () => {
         setIsConnected(false)
+        if (eventSource) {
+          eventSource.close()
+        }
       }
     } catch (err) {
       console.warn('SSE not supported or failed to connect:', err)

@@ -104,6 +104,12 @@ export default function AdminSidebar({
     let eventSource: EventSource | null = null
     try {
       eventSource = new EventSource('/api/admin/events')
+      eventSource.onerror = () => {
+        // Encerra imediatamente para não esgotar sockets do navegador em serverless (Vercel)
+        if (eventSource) {
+          eventSource.close()
+        }
+      }
       eventSource.addEventListener('new_booking', (e: MessageEvent) => {
         try {
           const data = JSON.parse(e.data)

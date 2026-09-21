@@ -28,11 +28,7 @@ export interface UpdateSessionResult {
 }
 
 export const updateSession = async (request: NextRequest): Promise<UpdateSessionResult> => {
-  const supabaseResponse = NextResponse.next({
-    request: {
-      headers: request.headers,
-    },
-  })
+  const supabaseResponse = NextResponse.next()
 
   const isLoggedOut = request.cookies.get('logged_out')?.value === 'true'
   const sessionToken = request.cookies.get(SESSION_COOKIE_NAME)?.value
