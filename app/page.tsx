@@ -60,20 +60,36 @@ export default function Home() {
               />
             </div>
 
-            {/* Badge "Portal Oficial do Cidadão" com Realce Neon */}
-            <span 
-              className="badge px-3 py-2 rounded-pill fw-semibold d-inline-flex align-items-center gap-1.5 shadow-sm"
-              style={{
-                backgroundColor: 'rgba(3, 140, 51, 0.22)',
-                color: '#0DF205',
-                border: '1px solid rgba(13, 242, 5, 0.45)',
-                fontSize: '12px',
-                letterSpacing: '0.02em'
-              }}
-            >
-              <i className="bi bi-shield-check fs-6 text-warning" style={{ color: '#F2CB05' }}></i>
-              <span>Portal Oficial do Cidadão</span>
-            </span>
+            {/* Badge e Acesso Servidor / Acompanhamento */}
+            <div className="d-flex align-items-center gap-2 flex-wrap">
+              <span 
+                className="badge px-3 py-2 rounded-pill fw-semibold d-inline-flex align-items-center gap-1.5 shadow-sm"
+                style={{
+                  backgroundColor: 'rgba(3, 140, 51, 0.22)',
+                  color: '#0DF205',
+                  border: '1px solid rgba(13, 242, 5, 0.45)',
+                  fontSize: '12px',
+                  letterSpacing: '0.02em'
+                }}
+              >
+                <i className="bi bi-shield-check fs-6 text-warning" style={{ color: '#F2CB05' }}></i>
+                <span>Portal Oficial do Cidadão</span>
+              </span>
+
+              <Link
+                href="/login"
+                className="btn btn-sm px-3 py-1.5 rounded-pill fw-semibold d-inline-flex align-items-center gap-1 text-decoration-none transition-all"
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.07)',
+                  color: '#E2E8F0',
+                  border: '1px solid rgba(255, 255, 255, 0.18)',
+                  fontSize: '12px'
+                }}
+              >
+                <i className="bi bi-person-fill-lock text-warning"></i>
+                <span>Acesso Servidor / Painel</span>
+              </Link>
+            </div>
           </div>
 
           {/* Hero Content Section */}
@@ -120,7 +136,7 @@ export default function Home() {
               Realize seu agendamento de forma rápida e segura para atendimento no posto municipal.
             </p>
 
-            {/* CTA Principal de Agendamento */}
+            {/* CTA Principal de Agendamento e Acompanhamento */}
             <div className="pt-2 d-flex flex-wrap gap-3 align-items-center">
               <Link 
                 href="/agendamento" 
@@ -147,6 +163,51 @@ export default function Home() {
                 <i className="bi bi-calendar-check fs-5" style={{ color: '#0D0D0D' }}></i>
                 <span>Agendar Atendimento</span>
                 <i className="bi bi-arrow-right ms-1" style={{ color: '#0D0D0D' }}></i>
+              </Link>
+
+              {/* Botão Acompanhamento e Gestão de Agendamentos */}
+              <Link 
+                href="/admin/agendamentos" 
+                className="btn btn-lg px-4 py-3 fw-semibold d-inline-flex align-items-center gap-2 text-decoration-none transition-all rounded-3"
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                  color: '#F8FAFC',
+                  border: '1px solid rgba(255, 255, 255, 0.22)',
+                  fontSize: '15px',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.15)'
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.4)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)'
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.22)'
+                }}
+              >
+                <i className="bi bi-card-checklist fs-5 text-warning"></i>
+                <span>Acompanhar Agendamentos</span>
+              </Link>
+
+              {/* Documentos Necessários */}
+              <Link 
+                href="/orientacoes" 
+                className="btn btn-lg px-3 py-3 fw-medium d-inline-flex align-items-center gap-2 text-decoration-none transition-all rounded-3"
+                style={{
+                  backgroundColor: 'transparent',
+                  color: '#94A3B8',
+                  fontSize: '14.5px',
+                  transition: 'all 0.2s ease'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = '#38BDF8'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = '#94A3B8'
+                }}
+              >
+                <i className="bi bi-file-earmark-text"></i>
+                <span>Documentação Necessária</span>
               </Link>
             </div>
 
