@@ -557,6 +557,7 @@ export async function createClient() {
       let isHeadMode = false       // true when { head: true } is passed to select()
       let isCountMode = false      // true when { count: 'exact' } is passed to select()
       let lastInsertedItem: any = null  // tracks the most recently inserted item
+      let lastDeletedItems: any[] | null = null  // tracks items removed during delete
 
       const executePendingMutations = () => {
         let mutated = false
@@ -578,6 +579,7 @@ export async function createClient() {
         }
 
         if (pendingDelete && tableData) {
+          lastDeletedItems = []
           for (let i = tableData.length - 1; i >= 0; i--) {
             let match = true
             for (const key in eqFilters) {
@@ -587,6 +589,7 @@ export async function createClient() {
               }
             }
             if (match && Object.keys(eqFilters).length > 0) {
+              lastDeletedItems.push(tableData[i])
               tableData.splice(i, 1)
               mutated = true
             }
@@ -711,7 +714,9 @@ export async function createClient() {
           const filtered = applyFilters(tableData)
           let responseData = null
 
-          if (table === 'profiles') {
+          if (lastDeletedItems !== null) {
+            responseData = lastDeletedItems[0] ?? null
+          } else if (table === 'profiles') {
             responseData = filtered[0] || null
           } else if (table === 'system_settings') {
             const key = eqFilters['key'] || 'monthly_limit'
@@ -738,6 +743,13 @@ export async function createClient() {
         },
         then: (resolve: any, _reject?: any) => {
           executePendingMutations()
+
+          if (lastDeletedItems !== null) {
+            const result = { data: lastDeletedItems, count: lastDeletedItems.length, error: null }
+            resolve(result)
+            return Promise.resolve(result)
+          }
+
           let filtered = applyFilters(tableData)
           const totalCount = filtered.length
 

@@ -157,6 +157,8 @@ export default function AppointmentsManagementClient({ initialAppointments }: Pr
     setActionLoadingId(id)
     setFeedbackMessage(null)
 
+    const previousAppointments = appointments
+
     // Optimistic UI update
     setAppointments(prev => prev.map(a => a.id === id ? { ...a, status: 'completed' } : a))
 
@@ -167,9 +169,11 @@ export default function AppointmentsManagementClient({ initialAppointments }: Pr
           setFeedbackMessage({ type: 'success', text: `Atendimento do protocolo ${protocol} confirmado com sucesso!` })
           router.refresh()
         } else {
+          setAppointments(previousAppointments)
           setFeedbackMessage({ type: 'error', text: res.error || 'Erro ao confirmar atendimento.' })
         }
       } catch (err: any) {
+        setAppointments(previousAppointments)
         setFeedbackMessage({ type: 'error', text: err.message || 'Erro inesperado ao confirmar atendimento.' })
       } finally {
         setActionLoadingId(null)
@@ -187,6 +191,8 @@ export default function AppointmentsManagementClient({ initialAppointments }: Pr
     setActionLoadingId(id)
     setFeedbackMessage(null)
 
+    const previousAppointments = appointments
+
     // Optimistic UI update: ONLY target ID is removed
     setAppointments(prev => prev.filter(a => a.id !== id))
 
@@ -197,9 +203,11 @@ export default function AppointmentsManagementClient({ initialAppointments }: Pr
           setFeedbackMessage({ type: 'success', text: `Agendamento ${protocol} excluído com sucesso.` })
           router.refresh()
         } else {
+          setAppointments(previousAppointments)
           setFeedbackMessage({ type: 'error', text: res.error || 'Erro ao excluir agendamento.' })
         }
       } catch (err: any) {
+        setAppointments(previousAppointments)
         setFeedbackMessage({ type: 'error', text: err.message || 'Erro inesperado ao excluir agendamento.' })
       } finally {
         setActionLoadingId(null)

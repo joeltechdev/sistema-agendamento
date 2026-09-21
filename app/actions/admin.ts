@@ -301,22 +301,32 @@ export async function adminDeleteAppointment(appointmentId: string) {
   }
 
   const { supabase, user } = await getAdminContext()
+  const cleanId = appointmentId.trim()
 
   // Buscar dados antes de deletar para auditoria
   const { data: aptData } = await supabase
     .from('appointments')
     .select('id, protocol_number, full_name')
-    .eq('id', appointmentId.trim())
+    .eq('id', cleanId)
     .single()
 
-  const { error } = await supabase
+  const { data: deletedRows, error } = await supabase
     .from('appointments')
     .delete()
-    .eq('id', appointmentId.trim())
+    .eq('id', cleanId)
+    .select('id')
 
   if (error) {
     console.error('Erro ao excluir agendamento:', error)
-    return { success: false, error: 'Não foi possível excluir o agendamento.' }
+    return { success: false, error: 'Não foi possível excluir o agendamento no banco de dados.' }
+  }
+
+  if (Array.isArray(deletedRows) && deletedRows.length === 0) {
+    console.error('Falha ao excluir agendamento: 0 linhas afetadas (permissão RLS do Supabase impediu a exclusão).')
+    return {
+      success: false,
+      error: 'O banco de dados não permitiu a exclusão permanente (bloqueio RLS). Configure a SUPABASE_SERVICE_ROLE_KEY ou execute a liberação de permissão no Supabase.'
+    }
   }
 
   // Auditar ação de exclusão
@@ -329,7 +339,7 @@ export async function adminDeleteAppointment(appointmentId: string) {
   )
 
   bookingEventEmitter.emit('booking_cancelled', {
-    appointmentId: appointmentId.trim(),
+    appointmentId: cleanId,
     protocol: aptData?.protocol_number,
     reason: 'Excluído pelo administrador'
   })

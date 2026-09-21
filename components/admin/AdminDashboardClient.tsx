@@ -422,13 +422,18 @@ export default function AdminDashboardClient({ initialMetrics }: Props) {
 
     // 2. Server action
     try {
+      let res: { success?: boolean; error?: string } | undefined
       if (newStatus === 'completed') {
-        await adminConfirmAttendance(appointmentId)
+        res = await adminConfirmAttendance(appointmentId)
       } else {
-        await adminUpdateAppointmentStatus(appointmentId, newStatus)
+        res = await adminUpdateAppointmentStatus(appointmentId, newStatus)
       }
-    } catch (err) {
+      if (res && !res.success) {
+        alert(res.error || 'Não foi possível atualizar o status do agendamento no banco de dados.')
+      }
+    } catch (err: any) {
       console.error('Erro ao atualizar status:', err)
+      alert(err?.message || 'Erro inesperado ao atualizar status.')
     }
 
     // 3. Re-fetch
