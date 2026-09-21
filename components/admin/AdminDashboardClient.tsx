@@ -2,9 +2,13 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
-import WeeklyCalendarGrid, { Appointment, isAppointmentOverdue, isSecondIssueAppointment } from './WeeklyCalendarGrid'
+import WeeklyCalendarGrid, { 
+  Appointment, 
+  isAppointmentOverdue, 
+  isSecondIssueAppointment,
+  formatLocalDate 
+} from './WeeklyCalendarGrid'
 import WalkInBookingModal from './WalkInBookingModal'
-import EmptyStateCanvas from './EmptyStateCanvas'
 import { adminUpdateAppointmentStatus, adminConfirmAttendance, getCompletedAppointments } from '@/app/actions/admin'
 
 interface DashboardMetrics {
@@ -44,6 +48,7 @@ export default function AdminDashboardClient({ initialMetrics }: Props) {
   const [metrics, setMetrics] = useState<DashboardMetrics>(initialMetrics)
   const [viewMode, setViewMode] = useState<'grid' | 'table' | 'completed'>('grid')
   const [jumpToDate, setJumpToDate] = useState<string | null>(null)
+  const [jumpToSlot, setJumpToSlot] = useState<{ date: string; time?: string; protocol?: string } | null>(null)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isConnected, setIsConnected] = useState(true)
   const [newlyAddedId, setNewlyAddedId] = useState<string | null>(null)
@@ -54,7 +59,7 @@ export default function AdminDashboardClient({ initialMetrics }: Props) {
   const [completedSearch, setCompletedSearch] = useState('')
   const [completedDateFilter, setCompletedDateFilter] = useState('')
   const [refreshFeedback, setRefreshFeedback] = useState<{ text: string; type: 'success' | 'info' | 'warning' } | null>(null)
-  const lastEventRef = useRef<string>('')
+  const processedProtocolsRef = useRef<Map<string, number>>(new Map())
   const lastEtagRef = useRef<string | null>(null)
   const lastSyncEtagRef = useRef<string | null>(null)
 
@@ -160,6 +165,7 @@ export default function AdminDashboardClient({ initialMetrics }: Props) {
         if (etag) lastEtagRef.current = etag
 
         const fresh = await res.json()
+
         setMetrics(prev => {
           // Merge fresh appointments with any local optimistic items
           const freshList: Appointment[] = fresh.upcomingAppointments || []
@@ -281,6 +287,22 @@ export default function AdminDashboardClient({ initialMetrics }: Props) {
     fetchFreshMetrics(undefined, { start: startDate, end: endDate })
   }, [fetchFreshMetrics])
 
+  const isAlreadyProcessed = useCallback((protocol: string) => {
+    if (!protocol) return false
+    const cleanProto = protocol.trim().toUpperCase()
+    const now = Date.now()
+    const lastSeen = processedProtocolsRef.current.get(cleanProto)
+    if (lastSeen && (now - lastSeen < 60000)) {
+      return true
+    }
+    processedProtocolsRef.current.set(cleanProto, now)
+    // Cleanup old items
+    for (const [key, time] of processedProtocolsRef.current.entries()) {
+      if (now - time > 120000) processedProtocolsRef.current.delete(key)
+    }
+    return false
+  }, [])
+
   // Trigger toast notification and IMMEDIATELY append to state
   const notifyNewBooking = useCallback((payload: {
     protocol: string
@@ -292,7 +314,8 @@ export default function AdminDashboardClient({ initialMetrics }: Props) {
     phone?: string
     id?: string
   }) => {
-    const toastId = `toast-${Date.now()}`
+    if (!payload.protocol) return
+    const toastId = `toast-${payload.protocol}`
     const newToast: ToastNotification = {
       id: toastId,
       title: 'Novo Agendamento Confirmado!',
@@ -304,7 +327,10 @@ export default function AdminDashboardClient({ initialMetrics }: Props) {
       serviceType: payload.appointment_type
     }
 
-    setToasts(prev => [newToast, ...prev.slice(0, 3)])
+    setToasts(prev => {
+      if (prev.some(t => t.protocol === payload.protocol)) return prev
+      return [newToast, ...prev.slice(0, 2)]
+    })
     playNotificationSound()
 
     // 1. Optimistic append directly into metrics state so the slot renders IMMEDIATELY
@@ -318,7 +344,7 @@ export default function AdminDashboardClient({ initialMetrics }: Props) {
       protocol_number: payload.protocol,
       full_name: payload.full_name || 'Cidadão',
       phone: payload.phone || '',
-      appointment_date: payload.appointment_date || new Date().toISOString().split('T')[0],
+      appointment_date: payload.appointment_date || formatLocalDate(new Date()),
       appointment_time: formattedTime,
       appointment_type: rawType,
       tipo: isSecond ? 'SEGUNDA_VIA' : 'PRIMEIRA_VIA',
@@ -337,7 +363,7 @@ export default function AdminDashboardClient({ initialMetrics }: Props) {
       )
       if (alreadyPresent) return prev
 
-      const todayStr = new Date().toISOString().split('T')[0]
+      const todayStr = formatLocalDate(new Date())
       const isForToday = payload.appointment_date === todayStr
 
       return {
@@ -349,14 +375,14 @@ export default function AdminDashboardClient({ initialMetrics }: Props) {
       }
     })
 
-    // Auto dismiss toast after 9s
+    // Auto dismiss toast after 10s
     setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== toastId))
-    }, 9000)
+      setToasts(prev => prev.filter(t => t.protocol !== payload.protocol))
+    }, 10000)
 
     // 2. Fetch fresh metrics from backend to synchronize
-    fetchFreshMetrics(payload.protocol, activeWeekRange.start ? activeWeekRange : undefined)
-  }, [activeWeekRange, fetchFreshMetrics, playNotificationSound])
+    fetchFreshMetrics(payload.protocol, activeWeekRangeRef.current.start ? activeWeekRangeRef.current : undefined)
+  }, [fetchFreshMetrics, playNotificationSound])
 
   const handleSlotClick = useCallback((dateStr: string, slotStr: string) => {
     setWalkInModal({
@@ -427,9 +453,7 @@ export default function AdminDashboardClient({ initialMetrics }: Props) {
       eventSource.addEventListener('new_booking', (e: MessageEvent) => {
         try {
           const data = JSON.parse(e.data)
-          const eventKey = `${data.protocol}-${data.timestamp || ''}`
-          if (lastEventRef.current !== eventKey) {
-            lastEventRef.current = eventKey
+          if (data && data.protocol && !isAlreadyProcessed(data.protocol)) {
             notifyNewBooking(data)
           }
         } catch (err) {
@@ -462,12 +486,9 @@ export default function AdminDashboardClient({ initialMetrics }: Props) {
       try {
         channel1 = new BroadcastChannel('booking_sync')
         channel1.onmessage = (e) => {
-          if (e.data?.type === 'NEW_BOOKING' || e.data?.protocol) {
-            const eventKey = `${e.data.protocol}-${e.data.timestamp || ''}`
-            if (lastEventRef.current !== eventKey) {
-              lastEventRef.current = eventKey
-              notifyNewBooking(e.data)
-            }
+          const proto = e.data?.protocol
+          if (proto && !isAlreadyProcessed(proto)) {
+            notifyNewBooking(e.data)
           }
         }
       } catch (err) {
@@ -481,12 +502,9 @@ export default function AdminDashboardClient({ initialMetrics }: Props) {
       try {
         channel2 = new BroadcastChannel('scheduling_sync_channel')
         channel2.onmessage = (e) => {
-          if (e.data?.type === 'NEW_BOOKING_EVENT' || e.data?.type === 'NEW_BOOKING') {
-            const eventKey = `${e.data.protocol}-${e.data.timestamp || e.data.time || ''}`
-            if (lastEventRef.current !== eventKey) {
-              lastEventRef.current = eventKey
-              notifyNewBooking(e.data)
-            }
+          const proto = e.data?.protocol
+          if (proto && !isAlreadyProcessed(proto)) {
+            notifyNewBooking(e.data)
           }
         }
       } catch (err) {
@@ -508,12 +526,8 @@ export default function AdminDashboardClient({ initialMetrics }: Props) {
         timestamp?: string
       }>
       const detail = customEvt.detail
-      if (detail && detail.protocol) {
-        const eventKey = `${detail.protocol}-${detail.timestamp || ''}`
-        if (lastEventRef.current !== eventKey) {
-          lastEventRef.current = eventKey
-          notifyNewBooking(detail)
-        }
+      if (detail && detail.protocol && !isAlreadyProcessed(detail.protocol)) {
+        notifyNewBooking(detail)
       }
     }
     window.addEventListener('new_booking_event', handleCustomWindowSync)
@@ -523,9 +537,7 @@ export default function AdminDashboardClient({ initialMetrics }: Props) {
       if (e.key === 'last_booking_event' && e.newValue) {
         try {
           const parsed = JSON.parse(e.newValue)
-          const eventKey = `${parsed.protocol}-${parsed.timestamp || ''}`
-          if (lastEventRef.current !== eventKey) {
-            lastEventRef.current = eventKey
+          if (parsed && parsed.protocol && !isAlreadyProcessed(parsed.protocol)) {
             notifyNewBooking(parsed)
           }
         } catch {
@@ -548,7 +560,7 @@ export default function AdminDashboardClient({ initialMetrics }: Props) {
       window.removeEventListener('storage', onStorage)
       clearInterval(pollInterval)
     }
-  }, [fetchFreshMetrics, notifyNewBooking])
+  }, [fetchFreshMetrics, isAlreadyProcessed, notifyNewBooking])
 
   // Calculate counts for right metrics deck and bottom queue
   const overdueCount = useMemo(() => {
@@ -563,6 +575,7 @@ export default function AdminDashboardClient({ initialMetrics }: Props) {
   // Filtered upcoming appointments based on serviceFilter (1ª Via / 2ª Via) and quickSearch
   const filteredUpcomingAppointments = useMemo(() => {
     let list = metrics.upcomingAppointments || []
+
     if (serviceFilter === 'first_issue') {
       list = list.filter(a => !isSecondIssueAppointment(a))
     } else if (serviceFilter === 'second_issue') {
@@ -632,7 +645,7 @@ export default function AdminDashboardClient({ initialMetrics }: Props) {
     let secondIssue = 0
     let todayFirst = 0
     let todaySecond = 0
-    const todayStr = new Date().toISOString().split('T')[0]
+    const todayStr = formatLocalDate(new Date())
 
     list.forEach(a => {
       const isSecond = isSecondIssueAppointment(a)
@@ -656,6 +669,25 @@ export default function AdminDashboardClient({ initialMetrics }: Props) {
       completedSecond: metrics.completedSecondIssue ?? 0
     }
   }, [metrics])
+
+  const handleJumpToGrid = useCallback((toast: ToastNotification) => {
+    if (!toast.date) return
+    if (serviceFilter !== 'all') {
+      setServiceFilter('all')
+    }
+    if (quickSearch) {
+      setQuickSearch('')
+    }
+    setViewMode('grid')
+    setJumpToSlot({
+      date: toast.date,
+      time: toast.timeSlot,
+      protocol: toast.protocol
+    })
+    setJumpToDate(toast.date)
+    setNewlyAddedId(toast.protocol)
+    setTimeout(() => setNewlyAddedId(null), 8000)
+  }, [quickSearch, serviceFilter])
 
   return (
     <div style={{ color: '#E2E8F0', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif' }}>
@@ -697,10 +729,7 @@ export default function AdminDashboardClient({ initialMetrics }: Props) {
                   <button
                     type="button"
                     className="btn btn-primary btn-sm py-0 px-2 small shadow-xs"
-                    onClick={() => {
-                      setJumpToDate(toast.date!)
-                      setViewMode('grid')
-                    }}
+                    onClick={() => handleJumpToGrid(toast)}
                   >
                     <i className="bi bi-eye-fill me-1"></i> Ver na Grade
                   </button>
@@ -826,6 +855,7 @@ export default function AdminDashboardClient({ initialMetrics }: Props) {
                     appointments={filteredUpcomingAppointments} 
                     newlyAddedId={newlyAddedId}
                     jumpToDate={jumpToDate}
+                    jumpToSlot={jumpToSlot}
                     onWeekChange={handleWeekChange}
                     onSlotClick={handleSlotClick}
                     onAppointmentStatusChange={handleAppointmentStatusChange}

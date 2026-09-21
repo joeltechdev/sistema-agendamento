@@ -175,8 +175,7 @@ export async function createBooking(prevState: ActionState, formData: FormData):
   revalidatePath('/admin')
   revalidatePath('/agendamento')
 
-  // Dispara evento em tempo real para o dashboard admin
-  bookingEventEmitter.emit('new_booking', {
+  const bookingPayload = {
     id: rpcData?.appointment_id || `booking-${Date.now()}`,
     protocol: rpcData.protocol,
     full_name: result.data.full_name,
@@ -188,7 +187,10 @@ export async function createBooking(prevState: ActionState, formData: FormData):
     phone: result.data.phone,
     sexo: result.data.sexo,
     timestamp: new Date().toISOString()
-  })
+  }
+
+  // Dispara evento em tempo real para o dashboard admin
+  bookingEventEmitter.emit('new_booking', bookingPayload)
 
   return { 
     success: true, 

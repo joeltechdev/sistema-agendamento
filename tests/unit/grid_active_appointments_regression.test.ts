@@ -27,12 +27,12 @@ describe('Regressão Grade Semanal: Exibição de Agendamentos Ativos com Sessã
     });
   });
 
-  it('1. Deve ancorar agendamentos ativos nos dias úteis da semana atual mesmo quando o servidor roda no fim de semana', () => {
+  it('1. Deve ancorar agendamentos ativos na próxima semana útil quando o servidor roda no fim de semana (Sábado/Domingo)', () => {
     // Simula data em um Sábado (ex: 19/09/2026)
     const saturday = new Date(2026, 8, 19, 10, 0, 0); // 19 de Setembro de 2026 (Sábado)
     const monday = getMondayOfCurrentWeek(saturday);
     
-    expect(monday.getDate()).toBe(14);
+    expect(monday.getDate()).toBe(21);
     expect(monday.getMonth()).toBe(8); // Setembro (0-indexed 8)
     expect(monday.getFullYear()).toBe(2026);
 
@@ -46,11 +46,11 @@ describe('Regressão Grade Semanal: Exibição de Agendamentos Ativos com Sessã
     }
 
     expect(weekDays).toEqual([
-      '2026-09-14',
-      '2026-09-15',
-      '2026-09-16',
-      '2026-09-17',
-      '2026-09-18'
+      '2026-09-21',
+      '2026-09-22',
+      '2026-09-23',
+      '2026-09-24',
+      '2026-09-25'
     ]);
 
     const store = getMockStore();
@@ -59,7 +59,7 @@ describe('Regressão Grade Semanal: Exibição de Agendamentos Ativos com Sessã
         apt.status !== 'completed' && apt.status !== 'cancelled'
     );
 
-    // Deve haver agendamentos ativos caindo dentro dos 5 dias úteis da semana atual exibida (14/09 a 18/09)
+    // Deve haver agendamentos ativos caindo dentro dos 5 dias úteis da semana operacional exibida (21/09 a 25/09)
     const appointmentsInDisplayedWeek = activeAppointments.filter(
       (apt: { appointment_date: string }) => weekDays.includes(apt.appointment_date)
     );

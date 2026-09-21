@@ -109,10 +109,39 @@ export function normalizeTimeStringToHHMM(timeInput: any): string {
   return str.slice(0, 5)
 }
 
-// Helper to get current week's Monday dynamically
-export function getMondayOfCurrentWeek(date: Date = new Date()): Date {
-  const d = new Date(date)
-  const day = d.getDay() // 0 = Sun, 1 = Mon...
+// Helper to get current week's Monday dynamically according to municipal operational rules
+// On weekends (Saturday/Sunday), since municipal service (Mon-Fri) has completed for the week,
+// the default week is the upcoming business week (next Monday).
+export function getMondayOfCurrentWeek(dateInput: Date | string = new Date()): Date {
+  const d = typeof dateInput === 'string' ? new Date(dateInput) : new Date(dateInput)
+  const day = d.getDay() // 0 = Sun, 1 = Mon, ..., 6 = Sat
+  if (day === 6) {
+    // Saturday: +2 days -> Next Monday
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 2, 0, 0, 0, 0)
+  }
+  if (day === 0) {
+    // Sunday: +1 day -> Next Monday
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1, 0, 0, 0, 0)
+  }
+  const diff = d.getDate() - day + 1
+  return new Date(d.getFullYear(), d.getMonth(), diff, 0, 0, 0, 0)
+}
+
+// Helper to get Monday for a specific target date (for jump/navigation without weekend-advancing)
+export function getMondayForDate(dateInput: Date | string): Date {
+  let d: Date
+  if (typeof dateInput === 'string') {
+    const cleanStr = dateInput.split('T')[0]
+    const parts = cleanStr.includes('/') ? cleanStr.split('/').reverse().map(Number) : cleanStr.split('-').map(Number)
+    if (parts.length === 3) {
+      d = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0)
+    } else {
+      d = new Date(dateInput)
+    }
+  } else {
+    d = new Date(dateInput)
+  }
+  const day = d.getDay()
   const diff = d.getDate() - day + (day === 0 ? -6 : 1)
   return new Date(d.getFullYear(), d.getMonth(), diff, 0, 0, 0, 0)
 }
@@ -191,10 +220,11 @@ export default function WeeklyCalendarGrid({
   appointments, 
   newlyAddedId, 
   jumpToDate, 
+  jumpToSlot,
   onWeekChange,
   onSlotClick,
   onAppointmentStatusChange
-}: Props) {
+}: Props & { jumpToSlot?: { date: string; time?: string; protocol?: string } | null }) {
   // 1. Centralized Week State: anchored to Monday
   const [currentWeekStart, setCurrentWeekStart] = useState<Date>(() => getMondayOfCurrentWeek())
 
@@ -202,17 +232,41 @@ export default function WeeklyCalendarGrid({
   const [selectedAppointment, setSelectedAppointment] = useState<Appointment | null>(null)
   const [isUpdatingStatus, setIsUpdatingStatus] = useState<boolean>(false)
 
+  // Navigation handlers with callback trigger (Monday to Friday scope)
+  const updateWeekAndNotify = useCallback((newMonday: Date) => {
+    setCurrentWeekStart(newMonday)
+    if (onWeekChange) {
+      const startStr = formatLocalDate(newMonday)
+      const friday = new Date(newMonday.getFullYear(), newMonday.getMonth(), newMonday.getDate() + 4, 0, 0, 0, 0)
+      const endStr = formatLocalDate(friday)
+      onWeekChange(startStr, endStr)
+    }
+  }, [onWeekChange])
+
   // Reactively jump to a target week date (e.g. from real-time toast action)
   React.useEffect(() => {
     if (jumpToDate) {
-      const parts = jumpToDate.split('-').map(Number)
-      if (parts.length === 3) {
-        const target = new Date(parts[0], parts[1] - 1, parts[2], 0, 0, 0, 0)
-        const monday = getMondayOfCurrentWeek(target)
-        setCurrentWeekStart(monday)
+      const targetMonday = getMondayForDate(jumpToDate)
+      updateWeekAndNotify(targetMonday)
+    }
+  }, [jumpToDate, updateWeekAndNotify])
+
+  // Reactively jump to a target week date & slot with smooth scroll
+  React.useEffect(() => {
+    if (jumpToSlot?.date) {
+      const targetMonday = getMondayForDate(jumpToSlot.date)
+      updateWeekAndNotify(targetMonday)
+      if (jumpToSlot.time) {
+        const timeNorm = normalizeTimeStringToHHMM(jumpToSlot.time)
+        setTimeout(() => {
+          const rowEl = document.getElementById(`slot-row-${timeNorm}`)
+          if (rowEl) {
+            rowEl.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          }
+        }, 150)
       }
     }
-  }, [jumpToDate])
+  }, [jumpToSlot, updateWeekAndNotify])
 
   // Generate 5 business week days (Monday to Friday, excluding weekends)
   const weekDays = useMemo(() => {
@@ -256,17 +310,6 @@ export default function WeeklyCalendarGrid({
     return days
   }, [currentWeekStart])
 
-  // Navigation handlers with callback trigger (Monday to Friday scope)
-  const updateWeekAndNotify = (newMonday: Date) => {
-    setCurrentWeekStart(newMonday)
-    if (onWeekChange) {
-      const startStr = formatLocalDate(newMonday)
-      const friday = new Date(newMonday.getFullYear(), newMonday.getMonth(), newMonday.getDate() + 4, 0, 0, 0, 0)
-      const endStr = formatLocalDate(friday)
-      onWeekChange(startStr, endStr)
-    }
-  }
-
   const handlePrevWeek = () => {
     const prevMonday = new Date(currentWeekStart.getFullYear(), currentWeekStart.getMonth(), currentWeekStart.getDate() - 7, 0, 0, 0, 0)
     updateWeekAndNotify(prevMonday)
@@ -288,7 +331,7 @@ export default function WeeklyCalendarGrid({
     const targetDate = normalizeDateStringToYMD(dateStr)
     const targetSlot = normalizeTimeStringToHHMM(slotStr)
 
-    return appointments.filter(apt => {
+    const matches = appointments.filter(apt => {
       // Exclude completed and cancelled attendances from active grid (they are visible in "Atendimentos Realizados" / History)
       if (apt.status === 'completed' || apt.status === 'cancelled') return false
 
@@ -300,6 +343,8 @@ export default function WeeklyCalendarGrid({
       const aptTime = normalizeTimeStringToHHMM(rawTime)
       return aptTime === targetSlot
     })
+
+    return matches
   }, [appointments])
 
   // Formatter for current week header title
@@ -487,7 +532,7 @@ export default function WeeklyCalendarGrid({
               const endTime = calculateEndTime(slot)
 
               return (
-                <tr key={slot} style={{ minHeight: '110px', backgroundColor: '#FFFFFF' }}>
+                <tr key={slot} id={`slot-row-${slot}`} style={{ minHeight: '110px', backgroundColor: '#FFFFFF' }}>
                   
                   {/* Time Label Column (Fixed Sticky Left Column) */}
                   <td 
@@ -516,6 +561,7 @@ export default function WeeklyCalendarGrid({
                     return (
                       <td 
                         key={day.dateStr} 
+                        id={`cell-${day.dateStr}-${slot}`}
                         className="p-1.5 align-top position-relative"
                         style={{ 
                           height: '110px', 
@@ -589,13 +635,13 @@ export default function WeeklyCalendarGrid({
                                     setSelectedAppointment(apt)
                                   }}
                                   className={`p-2.5 rounded-3 text-start position-relative transition-all ${
-                                    isNew ? 'animate-pulse' : ''
+                                    isNew ? 'animate__animated animate__pulse animate__infinite' : ''
                                   }`}
                                   style={{
                                     backgroundColor: themeStyles.bg,
-                                    border: `1px solid ${themeStyles.border}`,
+                                    border: isNew ? '2px solid #2563EB' : `1px solid ${themeStyles.border}`,
                                     color: themeStyles.text,
-                                    boxShadow: themeStyles.shadow,
+                                    boxShadow: isNew ? '0 0 16px rgba(37, 99, 235, 0.65), 0 2px 8px rgba(0,0,0,0.15)' : themeStyles.shadow,
                                     cursor: 'pointer',
                                     borderRadius: '8px',
                                     minHeight: '92px',

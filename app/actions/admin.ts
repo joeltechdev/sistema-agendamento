@@ -300,7 +300,7 @@ export async function adminDeleteAppointment(appointmentId: string) {
     return { success: false, error: 'ID do agendamento é obrigatório e inválido.' }
   }
 
-  const { supabase, user } = await getAdminContext(true)
+  const { supabase, user } = await getAdminContext()
 
   // Buscar dados antes de deletar para auditoria
   const { data: aptData } = await supabase
@@ -336,6 +336,7 @@ export async function adminDeleteAppointment(appointmentId: string) {
 
   revalidatePath('/admin')
   revalidatePath('/admin/agendamentos')
+  revalidatePath('/admin/relatorios')
 
   return { success: true }
 }

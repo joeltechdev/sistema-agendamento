@@ -16,34 +16,42 @@ function assertNotProductionWithoutSupabase() {
   }
 }
 
+function formatLocalDate(date: Date = new Date()): string {
+  const y = date.getFullYear()
+  const m = String(date.getMonth() + 1).padStart(2, '0')
+  const d = String(date.getDate()).padStart(2, '0')
+  return `${y}-${m}-${d}`
+}
+
 function getBusinessDayDateString(dayOffsetFromMonday: number, weekOffset = 0): string {
   const d = new Date()
   const day = d.getDay()
-  const diff = d.getDate() - day + (day === 0 ? -6 : 1) // Monday of current week
-  const target = new Date(d.getFullYear(), d.getMonth(), diff + (weekOffset * 7) + dayOffsetFromMonday)
-  const y = target.getFullYear()
-  const m = String(target.getMonth() + 1).padStart(2, '0')
-  const dayStr = String(target.getDate()).padStart(2, '0')
-  return `${y}-${m}-${dayStr}`
+  // On Saturday (6) or Sunday (0), the operational week starts on the upcoming Monday
+  let mondayOffset = d.getDate() - day + 1
+  if (day === 6) mondayOffset = d.getDate() + 2
+  if (day === 0) mondayOffset = d.getDate() + 1
+
+  const target = new Date(d.getFullYear(), d.getMonth(), mondayOffset + (weekOffset * 7) + dayOffsetFromMonday)
+  return formatLocalDate(target)
 }
 
 function getTodayDateString(offsetDays = 0): string {
   const d = new Date()
   d.setDate(d.getDate() + offsetDays)
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
+  return formatLocalDate(d)
 }
 
 const MOCK_DB_FILE = path.join(process.cwd(), '.next', 'mock_db_store.json')
+let lastDiskMtime = 0
 
 function loadDiskData(): any {
   try {
     if (fs.existsSync(MOCK_DB_FILE)) {
+      const stats = fs.statSync(MOCK_DB_FILE)
       const raw = fs.readFileSync(MOCK_DB_FILE, 'utf-8')
       const parsed = JSON.parse(raw)
-      if (parsed && Array.isArray(parsed.appointments)) {
+      if (parsed && typeof parsed === 'object' && Array.isArray(parsed.appointments)) {
+        lastDiskMtime = stats.mtimeMs
         return parsed
       }
     }
@@ -58,6 +66,8 @@ export function saveDiskData(data: any) {
       fs.mkdirSync(dir, { recursive: true })
     }
     fs.writeFileSync(MOCK_DB_FILE, JSON.stringify(data, null, 2), 'utf-8')
+    const stats = fs.statSync(MOCK_DB_FILE)
+    lastDiskMtime = stats.mtimeMs
   } catch {}
 }
 
@@ -238,11 +248,27 @@ export function resetMockStoreAppointments(): Record<string, any[]> {
 
 export function getMockStore(): Record<string, any[]> {
   assertNotProductionWithoutSupabase()
+
+  // Always check if disk data is newer than in-memory cache (cross-process / worker sync)
+  if (fs.existsSync(MOCK_DB_FILE)) {
+    try {
+      const stats = fs.statSync(MOCK_DB_FILE)
+      if (!globalAny.__schedulingMockData__ || stats.mtimeMs > lastDiskMtime) {
+        const diskData = loadDiskData()
+        if (diskData && typeof diskData === 'object' && Array.isArray(diskData.appointments)) {
+          globalAny.__schedulingMockData__ = diskData
+          return globalAny.__schedulingMockData__
+        }
+      }
+    } catch {}
+  }
+
   if (globalAny.__schedulingMockData__) {
     return globalAny.__schedulingMockData__
   }
+
   const diskData = loadDiskData()
-  if (diskData && Array.isArray(diskData.appointments) && diskData.appointments.length > 0) {
+  if (diskData && typeof diskData === 'object' && Array.isArray(diskData.appointments)) {
     globalAny.__schedulingMockData__ = diskData
     return diskData
   }
@@ -382,7 +408,7 @@ export async function createClient() {
       const mockStore = getMockStore()
       if (fn === 'book_appointment') {
         const randomSuffix = Math.random().toString(36).substring(2, 8).toUpperCase()
-        const datePrefix = (params.p_appointment_date || new Date().toISOString().split('T')[0]).replace(/-/g, '')
+        const datePrefix = (params.p_appointment_date || formatLocalDate()).replace(/-/g, '')
         const protocol = `${datePrefix}-${randomSuffix}`
 
         const rawType = (params.p_appointment_type || 'first_issue').toString().toLowerCase()
