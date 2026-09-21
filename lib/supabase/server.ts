@@ -5,7 +5,7 @@ import path from 'path'
 import { verifySessionToken, SESSION_COOKIE_NAME, LEGACY_AUTH_COOKIES } from '@/lib/security/session'
 
 function assertNotProductionWithoutSupabase() {
-  if (process.env.NODE_ENV === 'production') {
+  if (process.env.NODE_ENV === 'production' && process.env.ALLOW_MOCK_PRODUCTION !== 'true') {
     const hasUrl = Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL)
     const hasAnonKey = Boolean(process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY)
     if (!hasUrl || !hasAnonKey) {
@@ -41,7 +41,10 @@ function getTodayDateString(offsetDays = 0): string {
   return formatLocalDate(d)
 }
 
-const MOCK_DB_FILE = path.join(process.cwd(), '.next', 'mock_db_store.json')
+const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME)
+const MOCK_DB_FILE = isServerless
+  ? path.join('/tmp', 'mock_db_store.json')
+  : path.join(process.cwd(), '.next', 'mock_db_store.json')
 let lastDiskMtime = 0
 
 function loadDiskData(): any {
