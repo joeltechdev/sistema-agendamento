@@ -12,6 +12,9 @@ export const LEGACY_AUTH_COOKIES = [
 
 export interface SessionPayload {
   sub: string
+  role?: string
+  email?: string
+  full_name?: string
   exp?: number
   iat?: number
 }
@@ -42,11 +45,21 @@ export function getSessionSecret(): Uint8Array {
 }
 
 /**
- * Cria token de sessão assinado contendo apenas { sub: userId, exp } via HS256
+ * Cria token de sessão assinado contendo sub, role, email e exp via HS256
  */
-export async function createSessionToken(userId: string): Promise<string> {
+export async function createSessionToken(
+  userId: string,
+  role?: string,
+  email?: string,
+  fullName?: string
+): Promise<string> {
   const secret = getSessionSecret()
-  return new SignJWT({ sub: userId })
+  const payload: Record<string, any> = { sub: userId }
+  if (role) payload.role = role
+  if (email) payload.email = email
+  if (fullName) payload.full_name = fullName
+
+  return new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('8h')
@@ -74,6 +87,9 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
 
     return {
       sub: payload.sub,
+      role: typeof payload.role === 'string' ? payload.role : undefined,
+      email: typeof payload.email === 'string' ? payload.email : undefined,
+      full_name: typeof payload.full_name === 'string' ? payload.full_name : undefined,
       exp: payload.exp,
       iat: payload.iat
     }

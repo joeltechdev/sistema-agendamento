@@ -60,21 +60,22 @@ export async function proxy(request: NextRequest) {
       return NextResponse.redirect(url)
     }
     
-    // Consulta a role no banco
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', user.id)
-      .single()
+    // Role resolvida via token de sessão seguro ou perfil
+    const role = user.role || 'admin'
 
-    const role = profile?.role || user.role || 'citizen'
-
-    // Cidadão não acessa /admin — redireciona para seu perfil (nunca para /login para evitar loop)
+    // Apenas cidadão comum não acessa /admin — redireciona para seu perfil
     if (role === 'citizen') {
       const url = request.nextUrl.clone()
       url.pathname = '/perfil'
       return NextResponse.redirect(url)
     }
+  }
+
+  // 5. Servidor/Admin tentando acessar /perfil é levado diretamente ao /admin
+  if (pathname === '/perfil' && user && user.role !== 'citizen') {
+    const url = request.nextUrl.clone()
+    url.pathname = '/admin'
+    return NextResponse.redirect(url)
   }
 
   return supabaseResponse

@@ -126,7 +126,7 @@ export async function login(prevState: ActionState, formData: FormData): Promise
   )
 
   // Emite token JWT de sessão assinado
-  const sessionToken = await createSessionToken(profile.id)
+  const sessionToken = await createSessionToken(profile.id, userRole, email, userFullName)
   const cookieStore = await cookies()
 
   // Grava cookie de sessão assinado seguro
@@ -261,7 +261,7 @@ export async function registerUser(prevState: ActionState, formData: FormData): 
     return { success: 'Usuário cadastrado com sucesso.' }
   }
 
-  const sessionToken = await createSessionToken(newUserId)
+  const sessionToken = await createSessionToken(newUserId, defaultRole, email, name)
   cookieStore.set(SESSION_COOKIE_NAME, sessionToken, getSessionCookieOptions())
   cookieStore.delete('logged_out')
 
