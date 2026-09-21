@@ -140,11 +140,10 @@ export default function Calendar({
       {/* 1. Painel do Calendário */}
       <div className="col-lg-7">
         <div 
-          className="bg-white h-100"
+          className="bg-white h-100 p-3 p-sm-4"
           style={{
             border: '1px solid #E5E8EC',
-            borderRadius: '14px',
-            padding: '22px'
+            borderRadius: '14px'
           }}
         >
           {/* Header do Calendário */}
@@ -217,11 +216,10 @@ export default function Calendar({
       {/* 2. Painel "Horários Disponíveis" */}
       <div className="col-lg-5">
         <div 
-          className="bg-white h-100 d-flex flex-column"
+          className="bg-white h-100 d-flex flex-column p-3 p-sm-4"
           style={{
             border: '1px solid #E5E8EC',
-            borderRadius: '14px',
-            padding: '22px'
+            borderRadius: '14px'
           }}
         >
           {/* Header do Painel */}
@@ -297,7 +295,7 @@ export default function Calendar({
             ) : (
               /* Grade de Chips de Horário */
               <div>
-                <div className="row row-cols-3 g-2">
+                <div className="row row-cols-2 row-cols-sm-3 g-2">
                   {availableSlots.map(time => {
                     const isSelected = selectedTime === time;
                     return (

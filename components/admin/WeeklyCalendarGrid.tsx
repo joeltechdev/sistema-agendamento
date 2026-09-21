@@ -461,7 +461,7 @@ export default function WeeklyCalendarGrid({
           className="table mb-0 bg-white" 
           style={{ 
             tableLayout: 'fixed', 
-            minWidth: '100%', 
+            minWidth: '760px', 
             borderCollapse: 'collapse'
           }}
         >

@@ -287,7 +287,7 @@ export default function BookingWizard({ profile, service, settings, initialVia }
       }}
     >
       {/* Stepper Header */}
-      <div className="p-4 border-bottom" style={{ backgroundColor: '#FAFBFC', borderColor: '#E5E8EC' }}>
+      <div className="p-3 p-sm-4 border-bottom" style={{ backgroundColor: '#FAFBFC', borderColor: '#E5E8EC' }}>
         <div className="position-relative">
           <div 
             className="position-absolute top-50 start-0 translate-middle-y d-none d-md-block" 
@@ -346,7 +346,7 @@ export default function BookingWizard({ profile, service, settings, initialVia }
       </div>
 
       {/* Body Content */}
-      <div className="p-4 p-md-5">
+      <div className="p-3 p-sm-4 p-md-5">
         
         {bookingState?.error && (
           <div className="alert alert-danger d-flex align-items-center gap-2 mb-4" style={{ borderRadius: '8px' }} role="alert">
@@ -563,7 +563,7 @@ export default function BookingWizard({ profile, service, settings, initialVia }
             <div className="mt-4 pt-3 text-end border-top" style={{ borderColor: '#E5E8EC' }}>
               <button 
                 type="button" 
-                className="btn px-5 py-2.5 fw-semibold" 
+                className="btn w-100 w-sm-auto px-5 py-2.5 fw-semibold" 
                 disabled={!appointmentType} 
                 onClick={handleNext}
                 style={{ 

@@ -135,3 +135,53 @@ a {
   outline-offset: 2px;
 }
 
+/* ==========================================================================
+   Responsividade Mobile (Smartphones e Tablets)
+   ========================================================================== */
+
+/* Drawer Mobile do Painel Administrativo (< 992px) */
+@media (max-width: 991.98px) {
+  .admin-sidebar-mobile {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    z-index: 1050 !important;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    box-shadow: 6px 0 30px rgba(0, 0, 0, 0.75) !important;
+  }
+  .admin-sidebar-mobile.open {
+    transform: translateX(0) !important;
+  }
+  .admin-backdrop {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    z-index: 1040;
+    animation: adminFadeIn 0.2s ease forwards;
+  }
+}
+
+@keyframes adminFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* Rolagem tátil e touch targets */
+.table-responsive {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+/* Acessibilidade de toque mínima de 44px */
+.touch-target-min {
+  min-height: 44px;
+}
+

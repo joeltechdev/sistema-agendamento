@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { cookies } from 'next/headers'
-import AdminSidebar from '@/components/admin/AdminSidebar'
+import AdminLayoutShell from '@/components/admin/AdminLayoutShell'
 import { formatNameFromEmail } from '@/lib/security/auth-utils'
 
 export const dynamic = 'force-dynamic'
@@ -67,32 +67,12 @@ export default async function AdminLayout({
     .neq('status', 'cancelled')
 
   return (
-    <div 
-      className="d-flex" 
-      style={{ 
-        height: '100vh', 
-        width: '100vw', 
-        overflow: 'hidden', 
-        backgroundColor: 'var(--main-bg, #262626)' 
-      }}
+    <AdminLayoutShell
+      userFullName={resolvedName}
+      userRole={resolvedRole}
+      initialDailyCount={dailyAppointments || 0}
     >
-      {/* Sidebar Redesenhada Slate-Navy - Fixa 100vh */}
-      <AdminSidebar 
-        userFullName={resolvedName}
-        userRole={resolvedRole}
-        initialDailyCount={dailyAppointments || 0}
-      />
-
-      {/* Conteúdo Central com Scroll Independente */}
-      <main 
-        className="flex-grow-1 p-3 p-lg-4 overflow-y-auto" 
-        style={{ 
-          height: '100vh', 
-          backgroundColor: 'var(--main-bg, #262626)' 
-        }}
-      >
-        {children}
-      </main>
-    </div>
+      {children}
+    </AdminLayoutShell>
   )
 }

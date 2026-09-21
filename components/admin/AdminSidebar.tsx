@@ -10,6 +10,8 @@ interface AdminSidebarProps {
   userFullName?: string
   userRole?: string
   initialDailyCount?: number
+  isMobileOpen?: boolean
+  onClose?: () => void
 }
 
 interface NavItem {
@@ -48,7 +50,9 @@ function isDateForToday(dateInput?: string): boolean {
 export default function AdminSidebar({
   userFullName = 'Administrador',
   userRole = 'admin',
-  initialDailyCount = 0
+  initialDailyCount = 0,
+  isMobileOpen = false,
+  onClose
 }: AdminSidebarProps) {
   const pathname = usePathname()
   const [isWalkInOpen, setIsWalkInOpen] = useState(false)
@@ -203,8 +207,17 @@ export default function AdminSidebar({
 
   return (
     <>
+      {/* Backdrop escuro no celular */}
+      {isMobileOpen && (
+        <div 
+          className="admin-backdrop d-lg-none"
+          onClick={onClose}
+          aria-hidden="true"
+        />
+      )}
+
       <aside 
-        className="d-flex flex-column flex-shrink-0"
+        className={`d-flex flex-column flex-shrink-0 admin-sidebar-mobile ${isMobileOpen ? 'open' : ''}`}
         style={{
           width: '264px',
           height: '100vh',
@@ -213,7 +226,7 @@ export default function AdminSidebar({
           position: 'sticky',
           top: 0,
           left: 0,
-          zIndex: 1000,
+          zIndex: 1050,
           userSelect: 'none',
           borderRight: '1px solid rgba(74, 222, 128, 0.15)',
           overflow: 'hidden'
@@ -221,21 +234,40 @@ export default function AdminSidebar({
       >
         {/* 1. Header com Logo Oficial de Poranga */}
         <div className="px-3 pt-3 pb-2">
-          <Link 
-            href="/admin" 
-            className="d-block text-decoration-none p-2 rounded-3 bg-white shadow-sm mb-2"
-            style={{ 
-              border: '1px solid rgba(22, 101, 52, 0.25)',
-              transition: 'transform 0.15s ease' 
-            }}
-          >
-            <img 
-              src="/logo-poranga.png" 
-              alt="Prefeitura Municipal de Poranga" 
-              className="img-fluid d-block mx-auto"
-              style={{ maxHeight: '44px', objectFit: 'contain' }}
-            />
-          </Link>
+          <div className="d-flex align-items-center justify-content-between mb-2">
+            <Link 
+              href="/admin" 
+              onClick={() => { if (onClose) onClose() }}
+              className="d-block text-decoration-none p-2 rounded-3 bg-white shadow-sm flex-grow-1"
+              style={{ 
+                border: '1px solid rgba(22, 101, 52, 0.25)',
+                transition: 'transform 0.15s ease' 
+              }}
+            >
+              <img 
+                src="/logo-poranga.png" 
+                alt="Prefeitura Municipal de Poranga" 
+                className="img-fluid d-block mx-auto"
+                style={{ maxHeight: '44px', objectFit: 'contain' }}
+              />
+            </Link>
+            {onClose && (
+              <button
+                type="button"
+                className="btn btn-sm text-white d-lg-none p-1 ms-2 rounded-circle border-0 d-flex align-items-center justify-content-center flex-shrink-0"
+                onClick={onClose}
+                aria-label="Fechar menu lateral"
+                style={{ 
+                  backgroundColor: 'rgba(255, 255, 255, 0.12)', 
+                  width: '32px', 
+                  height: '32px',
+                  color: '#86EFAC'
+                }}
+              >
+                <i className="bi bi-x-lg fs-6"></i>
+              </button>
+            )}
+          </div>
 
           <div className="px-1 text-center">
             <div 
@@ -257,7 +289,10 @@ export default function AdminSidebar({
         <div className="px-3 py-2">
           <button
             type="button"
-            onClick={() => setIsWalkInOpen(true)}
+            onClick={() => {
+              setIsWalkInOpen(true)
+              if (onClose) onClose()
+            }}
             className="btn w-100 d-flex align-items-center justify-content-center gap-2 fw-bold text-white shadow-sm"
             style={{
               backgroundColor: '#16A34A',
@@ -315,6 +350,7 @@ export default function AdminSidebar({
                     <Link
                       key={item.href}
                       href={item.href}
+                      onClick={() => { if (onClose) onClose() }}
                       id={`sidebar-link-${item.label.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/\s+/g, '-')}`}
                       className="d-flex align-items-center justify-content-between text-decoration-none"
                       style={{

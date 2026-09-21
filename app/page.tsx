@@ -7,7 +7,7 @@ import Footer from '@/components/layout/Footer'
 export default function Home() {
   return (
     <main 
-      className="min-vh-100 d-flex align-items-center justify-content-center p-3 p-md-4 position-relative overflow-hidden"
+      className="min-vh-100 d-flex align-items-center justify-content-center p-2 p-sm-3 p-md-4 position-relative overflow-hidden"
       style={{
         background: 'radial-gradient(circle at 50% 15%, #20593F 0%, #0D0D0D 60%, #050806 100%)',
       }}
@@ -26,7 +26,7 @@ export default function Home() {
 
       {/* Main Premium Card */}
       <div 
-        className="card border-0 rounded-4 overflow-hidden w-100 position-relative shadow-2xl" 
+        className="card border-0 rounded-4 overflow-hidden w-100 position-relative shadow-2xl my-2" 
         style={{ 
           maxWidth: '880px', 
           backgroundColor: '#121A15',
@@ -35,11 +35,11 @@ export default function Home() {
           zIndex: 1
         }}
       >
-        <div className="card-body p-4 p-md-5">
+        <div className="card-body p-3 p-sm-4 p-md-5">
           
           {/* Top Logo & Institutional Badge */}
           <div 
-            className="mb-4 pb-4 d-flex align-items-center justify-content-between flex-wrap gap-3"
+            className="mb-4 pb-4 d-flex flex-column flex-sm-row align-items-center justify-content-between text-center text-sm-start gap-3"
             style={{ borderBottom: '1px solid rgba(13, 242, 5, 0.15)' }}
           >
             {/* Logo Oficial de Poranga com Fundo Branco Limpo */}
@@ -56,19 +56,19 @@ export default function Home() {
                 width={200} 
                 height={60}
                 priority
-                style={{ objectFit: 'contain', height: 'auto', maxHeight: '56px', width: 'auto' }}
+                style={{ objectFit: 'contain', height: 'auto', maxHeight: '52px', width: 'auto' }}
               />
             </div>
 
             {/* Badge e Acesso Servidor / Acompanhamento */}
-            <div className="d-flex align-items-center gap-2 flex-wrap">
+            <div className="d-flex align-items-center justify-content-center justify-content-sm-end gap-2 flex-wrap w-100 w-sm-auto">
               <span 
                 className="badge px-3 py-2 rounded-pill fw-semibold d-inline-flex align-items-center gap-1.5 shadow-sm"
                 style={{
                   backgroundColor: 'rgba(3, 140, 51, 0.22)',
                   color: '#0DF205',
                   border: '1px solid rgba(13, 242, 5, 0.45)',
-                  fontSize: '12px',
+                  fontSize: '11.5px',
                   letterSpacing: '0.02em'
                 }}
               >
@@ -78,7 +78,7 @@ export default function Home() {
 
               <Link
                 href="/login"
-                className="btn btn-sm px-3 py-1.5 rounded-pill fw-semibold d-inline-flex align-items-center gap-1 text-decoration-none transition-all"
+                className="btn btn-sm px-3 py-1.5 rounded-pill fw-semibold d-inline-flex align-items-center gap-1 text-decoration-none transition-all touch-target-min"
                 style={{
                   backgroundColor: 'rgba(255, 255, 255, 0.07)',
                   color: '#E2E8F0',
@@ -96,14 +96,14 @@ export default function Home() {
           <div className="py-2">
             
             {/* Tag de Localidade / Posto Municipal */}
-            <div className="d-flex align-items-center gap-2 mb-3">
+            <div className="d-flex align-items-center justify-content-center justify-content-sm-start gap-2 mb-3">
               <span 
                 className="badge px-2.5 py-1.5 rounded-pill fw-semibold d-inline-flex align-items-center gap-1"
                 style={{
                   backgroundColor: 'rgba(242, 203, 5, 0.12)',
                   color: '#F2CB05',
                   border: '1px solid rgba(242, 203, 5, 0.3)',
-                  fontSize: '11.5px',
+                  fontSize: '11px',
                   letterSpacing: '0.04em'
                 }}
               >
@@ -114,10 +114,11 @@ export default function Home() {
 
             {/* Main Title */}
             <h1 
-              className="display-6 fw-bold mb-3 text-white" 
+              className="fw-bold mb-3 text-white text-center text-sm-start" 
               style={{ 
                 letterSpacing: '-0.025em',
-                lineHeight: '1.2' 
+                lineHeight: '1.25',
+                fontSize: 'clamp(1.5rem, 4vw, 2.3rem)'
               }}
             >
               Sistema de Agendamento de RG
@@ -125,11 +126,11 @@ export default function Home() {
 
             {/* Description Text with WCAG AA Legibility */}
             <p 
-              className="fs-5 mb-4 col-lg-11" 
+              className="mb-4 col-lg-11 text-center text-sm-start" 
               style={{ 
                 color: '#CBD5E1', 
                 lineHeight: '1.65',
-                fontSize: '17px' 
+                fontSize: 'clamp(0.95rem, 2.5vw, 1.05rem)' 
               }}
             >
               Bem-vindo ao sistema online para agendamento de emissão da sua Carteira de Identidade Nacional (CIN / RG). 
@@ -137,10 +138,10 @@ export default function Home() {
             </p>
 
             {/* CTA Principal de Agendamento e Acompanhamento */}
-            <div className="pt-2 d-flex flex-wrap gap-3 align-items-center">
+            <div className="pt-2 d-flex flex-column flex-sm-row flex-wrap gap-2 gap-sm-3 align-items-stretch align-items-sm-center">
               <Link 
                 href="/agendamento" 
-                className="btn btn-lg px-4 py-3 fw-bold d-inline-flex align-items-center gap-2 text-decoration-none transition-all shadow-lg rounded-3"
+                className="btn btn-lg px-4 py-3 fw-bold d-inline-flex align-items-center justify-content-center gap-2 text-decoration-none transition-all shadow-lg rounded-3 w-100 w-sm-auto touch-target-min"
                 style={{
                   background: 'linear-gradient(135deg, #038C33 0%, #0DF205 100%)',
                   color: '#0D0D0D',
@@ -168,7 +169,7 @@ export default function Home() {
               {/* Botão Acompanhamento e Gestão de Agendamentos */}
               <Link 
                 href="/admin/agendamentos" 
-                className="btn btn-lg px-4 py-3 fw-semibold d-inline-flex align-items-center gap-2 text-decoration-none transition-all rounded-3"
+                className="btn btn-lg px-4 py-3 fw-semibold d-inline-flex align-items-center justify-content-center gap-2 text-decoration-none transition-all rounded-3 w-100 w-sm-auto touch-target-min"
                 style={{
                   backgroundColor: 'rgba(255, 255, 255, 0.08)',
                   color: '#F8FAFC',
@@ -192,7 +193,7 @@ export default function Home() {
               {/* Documentos Necessários */}
               <Link 
                 href="/orientacoes" 
-                className="btn btn-lg px-3 py-3 fw-medium d-inline-flex align-items-center gap-2 text-decoration-none transition-all rounded-3"
+                className="btn btn-lg px-3 py-3 fw-medium d-inline-flex align-items-center justify-content-center gap-2 text-decoration-none transition-all rounded-3 w-100 w-sm-auto touch-target-min"
                 style={{
                   backgroundColor: 'transparent',
                   color: '#94A3B8',

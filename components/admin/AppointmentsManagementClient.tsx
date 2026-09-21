@@ -298,7 +298,7 @@ export default function AppointmentsManagementClient({ initialAppointments }: Pr
           </div>
 
           {/* Quick Search */}
-          <div style={{ minWidth: '260px', flex: '1', maxWidth: '360px' }}>
+          <div className="w-100 w-md-auto" style={{ minWidth: '200px', flex: '1', maxWidth: '360px' }}>
             <div className="input-group input-group-sm">
               <span className="input-group-text bg-white border-end-0 text-muted">
                 <i className="bi bi-search"></i>
@@ -353,17 +353,32 @@ export default function AppointmentsManagementClient({ initialAppointments }: Pr
             </div>
 
             <div className="d-flex align-items-center gap-2">
-              <span className="small text-muted fw-semibold">Origem:</span>
-              <select 
-                className="form-select form-select-sm" 
-                style={{ width: 'auto' }}
-                value={originFilter}
-                onChange={(e: any) => setOriginFilter(e.target.value)}
-              >
-                <option value="all">Todas as Origens</option>
-                <option value="presencial">Presencial (Balcão)</option>
-                <option value="online">Online (Portal)</option>
-              </select>
+              <span className="small text-muted fw-semibold">Canal:</span>
+              <div className="btn-group btn-group-sm" role="group">
+                <button
+                  type="button"
+                  className={`btn fw-semibold ${originFilter === 'all' ? 'btn-dark text-white' : 'btn-outline-secondary'}`}
+                  onClick={() => setOriginFilter('all')}
+                >
+                  Todos
+                </button>
+                <button
+                  type="button"
+                  className={`btn fw-semibold ${originFilter === 'online' ? 'btn-primary text-white' : 'btn-outline-primary'}`}
+                  onClick={() => setOriginFilter(originFilter === 'online' ? 'all' : 'online')}
+                >
+                  <i className="bi bi-globe me-1"></i>
+                  Online
+                </button>
+                <button
+                  type="button"
+                  className={`btn fw-semibold ${originFilter === 'presencial' ? 'btn-warning text-dark' : 'btn-outline-secondary'}`}
+                  onClick={() => setOriginFilter(originFilter === 'presencial' ? 'all' : 'presencial')}
+                >
+                  <i className="bi bi-building me-1"></i>
+                  Presencial
+                </button>
+              </div>
             </div>
           </div>
 
@@ -383,7 +398,7 @@ export default function AppointmentsManagementClient({ initialAppointments }: Pr
       <div className="card shadow-sm border-0 rounded-4 overflow-hidden bg-white" style={{ border: '1px solid #E2E8F0' }}>
         <div className="card-body p-0">
           <div className="table-responsive">
-            <table className="table table-hover align-middle mb-0">
+            <table className="table table-hover align-middle mb-0" style={{ minWidth: '820px' }}>
               <thead style={{ backgroundColor: '#F8FAFC', borderBottom: '1px solid #E2E8F0' }}>
                 <tr style={{ fontSize: '11px', color: '#64748B', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                   <th className="py-3 px-3">Protocolo</th>
