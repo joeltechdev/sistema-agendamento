@@ -120,30 +120,36 @@ export async function login(prevState: ActionState, formData: FormData): Promise
   const userId = effectiveProfile.id || '00000000-0000-0000-0000-000000000001'
 
   // Se o usuário não existia na tabela profiles, inserimos para persistência garantida
-  if (!profile) {
-    await supabase.from('profiles').insert({
-      id: userId,
-      full_name: userFullName,
-      email: email,
-      role: userRole,
-      created_at: new Date().toISOString()
-    })
-  } else if (profile.full_name !== userFullName && userFullName !== 'Administrador') {
-    await supabase.from('profiles').update({
-      full_name: userFullName
-    }).eq('id', profile.id)
+  if (!profile && userId !== '00000000-0000-0000-0000-000000000001') {
+    try {
+      await supabase.from('profiles').insert({
+        id: userId,
+        full_name: userFullName,
+        email: email,
+        role: userRole,
+        created_at: new Date().toISOString()
+      })
+    } catch {}
+  } else if (profile && profile.full_name !== userFullName && userFullName !== 'Administrador') {
+    try {
+      await supabase.from('profiles').update({
+        full_name: userFullName
+      }).eq('id', profile.id)
+    } catch {}
   }
 
-  await logSecurityAudit(
-    supabase, 
-    'LOGIN_SUCCESS', 
-    'auth', 
-    `Login realizado com sucesso para o usuário ${userFullName} (${email})`,
-    userId
-  )
+  try {
+    await logSecurityAudit(
+      supabase, 
+      'LOGIN_SUCCESS', 
+      'auth', 
+      `Login realizado com sucesso para o usuário ${userFullName} (${email})`,
+      userId
+    )
+  } catch {}
 
   // Emite token JWT de sessão assinado
-  const sessionToken = await createSessionToken(profile.id, userRole, email, userFullName)
+  const sessionToken = await createSessionToken(userId, userRole, email, userFullName)
   const cookieStore = await cookies()
 
   // Grava cookie de sessão assinado seguro

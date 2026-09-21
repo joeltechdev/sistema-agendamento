@@ -253,6 +253,10 @@ export function resetMockStoreAppointments(): Record<string, any[]> {
 export function getMockStore(): Record<string, any[]> {
   assertNotProductionWithoutSupabase()
 
+  if (process.env.NODE_ENV === 'test' && globalAny.__schedulingMockData__) {
+    return globalAny.__schedulingMockData__
+  }
+
   // Always check if disk data is newer than in-memory cache (cross-process / worker sync)
   if (fs.existsSync(MOCK_DB_FILE)) {
     try {
