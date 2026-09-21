@@ -40,19 +40,7 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // 3. Se o usuário já está logado e tenta ir pra login/cadastro, redireciona conforme seu papel
-  if (user && (pathname === '/login' || pathname === '/cadastro')) {
-    const url = request.nextUrl.clone()
-    const role = user.role || 'atendente'
-    if (role === 'citizen') {
-      url.pathname = '/perfil'
-    } else {
-      url.pathname = '/admin'
-    }
-    return NextResponse.redirect(url)
-  }
-
-  // 4. Validação de Role no servidor (RBAC) para páginas administrativas
+  // 3. Validação de Role no servidor (RBAC) para páginas administrativas
   if (pathname.startsWith('/admin')) {
     if (!user) {
       const url = request.nextUrl.clone()
