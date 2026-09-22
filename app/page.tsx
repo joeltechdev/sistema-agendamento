@@ -141,29 +141,11 @@ export default function Home() {
             <div className="pt-2 d-flex flex-column flex-sm-row flex-wrap gap-2 gap-sm-3 align-items-stretch align-items-sm-center">
               <Link 
                 href="/agendamento" 
-                className="btn btn-lg px-4 py-3 fw-bold d-inline-flex align-items-center justify-content-center gap-2 text-decoration-none transition-all shadow-lg rounded-3 w-100 w-sm-auto touch-target-min"
-                style={{
-                  background: 'linear-gradient(135deg, #038C33 0%, #0DF205 100%)',
-                  color: '#0D0D0D',
-                  border: 'none',
-                  fontSize: '15.5px',
-                  letterSpacing: '0.01em',
-                  boxShadow: '0 4px 20px rgba(13, 242, 5, 0.35), 0 2px 6px rgba(0, 0, 0, 0.4)',
-                  transition: 'all 0.2s ease',
-                  cursor: 'pointer'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.boxShadow = '0 6px 28px rgba(13, 242, 5, 0.55), 0 4px 12px rgba(0, 0, 0, 0.5)'
-                  e.currentTarget.style.transform = 'translateY(-2px)'
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.boxShadow = '0 4px 20px rgba(13, 242, 5, 0.35), 0 2px 6px rgba(0, 0, 0, 0.4)'
-                  e.currentTarget.style.transform = 'translateY(0)'
-                }}
+                className="btn-uiverse-schedule w-100 w-sm-auto touch-target-min"
               >
-                <i className="bi bi-calendar-check fs-5" style={{ color: '#0D0D0D' }}></i>
+                <i className="bi bi-calendar-check" style={{ fontSize: '15px' }}></i>
                 <span>Agendar Atendimento</span>
-                <i className="bi bi-arrow-right ms-1" style={{ color: '#0D0D0D' }}></i>
+                <i className="bi bi-arrow-right"></i>
               </Link>
 
               {/* Botão Acompanhamento e Gestão de Agendamentos */}
